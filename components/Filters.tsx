@@ -2,6 +2,7 @@ import { useFrame } from '@/hooks/useFrames';
 
 export default function Filters() {
     const [frame] = useFrame(10);
+    // FIXME: firefox
 
     return <>
         <svg style={{ display: 'none' }}>

@@ -23,6 +23,7 @@ export function NSlice({
 
     const cachedImages = cache.get(`${sheet.path}:${name}`);
 
+    /* eslint-disable react-hooks/exhaustive-deps */
     const [computedImages, pending, error] = useAwaiter(async () => {
         if (cachedImages) return null;
         const img = new Image();
@@ -48,6 +49,7 @@ export function NSlice({
 
         return images;
     }, []);
+    /* eslint-enable react-hooks/exhaustive-deps */
 
     if (computedImages) cache.set(`${sheet.path}:${name}`, computedImages);
     const images = computedImages ?? cachedImages;
