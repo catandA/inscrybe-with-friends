@@ -953,6 +953,7 @@ const RULESETS = {
                 health: 2,
                 noSac: true,
                 sigils: ['gainGemBlue', 'gainGemGreen'],
+                tribes: ['mox'],
             },
             moxGO: {
                 name: 'Goranj\'s Mox',
@@ -962,6 +963,7 @@ const RULESETS = {
                 health: 2,
                 noSac: true,
                 sigils: ['gainGemGreen', 'gainGemOrange'],
+                tribes: ['mox'],
             },
             moxOB: {
                 name: 'Orlu\'s Mox',
@@ -971,6 +973,7 @@ const RULESETS = {
                 health: 2,
                 noSac: true,
                 sigils: ['gainGemOrange', 'gainGemBlue'],
+                tribes: ['mox'],
             },
             moxG: {
                 name: 'Emerald Mox',
