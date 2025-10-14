@@ -38,7 +38,6 @@ export function PlayedCard({ children, opposing, lane }: PlayedCardProps) {
         const zEls = [el, ...getParents(el, '[data-z-plane]')];
 
         const controls: AnimationPlaybackControls[] = [];
-        const cleanup: (() => void)[] = [];
 
         // Exit animations
         if (!isPresent) {
@@ -67,7 +66,6 @@ export function PlayedCard({ children, opposing, lane }: PlayedCardProps) {
             } else if (event.type === 'move' && is(event.to) && !event.failed) {
                 // Pop in
                 el.style.opacity = '0';
-                cleanup.push(() => el.style.opacity = '');
             } else if (event.type === 'move' && is(event.from) && event.failed) {
                 // Shake
                 controls.push(animate(el, {
@@ -92,7 +90,6 @@ export function PlayedCard({ children, opposing, lane }: PlayedCardProps) {
             } else if (event.type === 'push' && is([event.from[0], event.from[1] + event.dx]) && !event.failed) {
                 // Pop in
                 el.style.opacity = '0';
-                cleanup.push(() => el.style.opacity = '');
             } else if (event.type === 'push' && is(event.from) && event.failed) {
                 // Shake
                 controls.push(animate(el, {
@@ -104,8 +101,7 @@ export function PlayedCard({ children, opposing, lane }: PlayedCardProps) {
         }
 
         return () => {
-            controls.forEach(c => c.complete());
-            cleanup.forEach(c => c());
+            controls.forEach(c => c.cancel());
             zEls.forEach(zEl => zEl.style.zIndex = '');
             if (lastAnimationRef.current !== animation) safeToRemove?.();
             lastAnimationRef.current = animation;
