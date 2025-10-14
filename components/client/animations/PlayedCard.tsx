@@ -1,6 +1,6 @@
 import { usePresence, useAnimate, AnimationPlaybackControls } from 'motion/react';
 import { animationDurations, useClientProp, useFightGetter } from '@/hooks/useClientStore';
-import { ReactNode, useEffect, useRef } from 'react';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { positions } from '@/lib/engine/utils';
 import { FieldPos } from '@/lib/engine/Card';
 
@@ -101,12 +101,16 @@ export function PlayedCard({ children, opposing, lane }: PlayedCardProps) {
         }
 
         return () => {
-            controls.forEach(c => c.cancel());
+            controls.forEach(c => c.stop());
             zEls.forEach(zEl => zEl.style.zIndex = '');
             if (lastAnimationRef.current !== animation) safeToRemove?.();
             lastAnimationRef.current = animation;
         };
     }, [isPresent, animation, safeToRemove, animate, scope, lane, opposing, getFight]);
 
-    return <div ref={scope}>{children}</div>;
+    const key = useMemo(() => {
+        return crypto.randomUUID();
+    }, [animation]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    return <div key={key} ref={scope}>{children}</div>;
 }
