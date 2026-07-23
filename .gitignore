@@ -29,4 +29,5 @@ scripts/seed
 *.tsbuildinfo
 next-env.d.ts
 /TEST/
+/reference/
 /.idea/
