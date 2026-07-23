@@ -3,6 +3,10 @@ import { adapter } from './adapter';
 import { provider } from './provider';
 
 export const authConfig: NextAuthConfig = {
+    // 本地开发必须：非 Vercel 环境下 NextAuth v5 默认不信任 Host 头，会导致 Configuration 错误
+    trustHost: true,
+    // v5 用 AUTH_SECRET，显式传入避免 beta 版自动检测不可靠
+    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
     providers: [
         provider({
             clientId: process.env.DISCORD_CLIENT_ID,
