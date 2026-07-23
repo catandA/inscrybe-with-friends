@@ -90,6 +90,10 @@ model Game {
     id      String  @id @default(uuid())
     lobbyId String?
 
+    // 服务端统一 RNG 的种子，游戏开始时写入，供 Phase 4 回放复现。
+    // 默认空串以兼容历史数据；新游戏在 game.ts start handler 中显式赋值。
+    seed    String  @default("")
+
     createdAt DateTime  @default(now())
     endedAt   DateTime?
 

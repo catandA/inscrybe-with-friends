@@ -8,6 +8,7 @@ import { getActiveSigils, createEffectContext, createCardContext, defaultEffects
 import { ErrorType, FightError } from './Errors';
 import { clone } from '../utils';
 import { FightAdapter, FightHost } from './Host';
+import { Rng } from './Rng';
 import { pick } from 'lodash';
 import { DECK_TYPES } from './Deck';
 import { cardCanPush, positions } from './utils';
@@ -16,6 +17,8 @@ import { MOX_TYPES } from './constants';
 export interface FightTick {
     fight: Fight<FightSide>;
     host: FightHost;
+    /** 服务端统一 RNG。所有游戏内随机点（洗牌、Power Dice、触手变身等）必须走此实例。 */
+    rng: Rng;
     adapter: FightAdapter;
     settled: Event[];
     queue: Event[];
@@ -189,6 +192,11 @@ export async function handleAction(tick: FightTick, side: FightSide, action: Act
 }
 
 function getPacket(tick: FightTick): FightPacket {
+    // 把 RNG 进度同步回 host，使 kv.setHost / saveHost 持久化后，
+    // 下次 newTick 用 Rng.resume(host.rngState) 能接着推进而非从头重来。
+    // 放在 getPacket 是因为 startGame/handleAction/handleResponse/handleEvents
+    // 四个入口都在末尾调用它，单点同步不可能漏。
+    tick.host.rngState = tick.rng.snapshot;
     return {
         settled: tick.settled.splice(0, tick.settled.length),
     };

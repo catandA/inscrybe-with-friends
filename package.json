@@ -7,6 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:push": "dotenv -e .env.local -- prisma db push",
     "db:studio": "dotenv -e .env.local -- prisma studio"
   },
@@ -59,7 +61,8 @@
     "prisma": "^6.10.1",
     "prisma-json-types-generator": "^3.5.0",
     "tsx": "^4.16.2",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "vitest": "2.1.0"
   },
   "pnpm": {
     "overrides": {

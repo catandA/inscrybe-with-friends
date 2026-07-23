@@ -1,10 +1,11 @@
 import { Action, ActionRes, PlayerMessage } from '@/lib/engine/Actions';
 import { FightHost, createTick } from '@/lib/engine/Host';
 import { FightPacket, FightTick, handleAction, handleEvents, handleResponse, startGame, translatePacket } from '@/lib/engine/Tick';
+import { Rng } from '@/lib/engine/Rng';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useClientStore } from './useClientStore';
-import { clone, shuffle } from '@/lib/utils';
+import { clone } from '@/lib/utils';
 import { FightSide } from '@/lib/engine/Fight';
 import { Event, translateEvent } from '@/lib/engine/Events';
 import { pick } from 'lodash';
@@ -66,11 +67,13 @@ export const useGameStore = create(
             createTick: (gameId) => {
                 const host = get().localGames[gameId]?.host;
                 if (!host) throw new Error('Missing local game!');
+                const rng = Rng.resume(host.rngState);
                 return createTick(host, {
+                    rng,
                     adapter: {
                         async initDeck(side, deck) {
                             const idxs = this.fight.decks[side][deck].map((_, idx) => idx);
-                            return shuffle(idxs);
+                            return this.rng.shuffle(idxs);
                         },
                     },
                     logger: {

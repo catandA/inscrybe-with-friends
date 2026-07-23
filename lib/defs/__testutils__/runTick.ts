@@ -1,0 +1,58 @@
+/**
+ * 符文行为测试工具：用 handleEvents 直接推送事件，绕过 handleAction 的费用/校验逻辑，
+ * 聚焦符文效果本身。适合做行为快照（事件序列 + 状态断言）。
+ *
+ * 不调用 startGame、不洗牌、不从牌库抽牌——setup 直接构造场面，
+ * 触发事件由调用方显式给出，保证完全确定。
+ */
+import { createFightHost, createTick } from '@/lib/engine/Host';
+import { handleEvents, FightPacket } from '@/lib/engine/Tick';
+import { Event } from '@/lib/engine/Events';
+import { Fight, FightSide, Phase } from '@/lib/engine/Fight';
+import { Rng } from '@/lib/engine/Rng';
+import { makeMinimalFight } from '@/lib/engine/__testutils__/fight';
+
+export interface RunOpts {
+    /** 初始 turn。默认 { side: 'player', phase: 'play' }。 */
+    turn?: { side: FightSide; phase: Phase };
+    /** RNG 种子，默认固定值以保证可复现。 */
+    seed?: string;
+}
+
+export interface RunResult {
+    fight: Fight<FightSide>;
+    packet: FightPacket;
+}
+
+/**
+ * @param setup  在 fight 上放置卡牌、设置状态等
+ * @param events 要推送并结算的事件序列
+ * @param opts   turn / seed
+ */
+export async function runEvents(
+    setup: (fight: Fight<FightSide>) => void,
+    events: Event[],
+    opts: RunOpts = {},
+): Promise<RunResult> {
+    const fight = makeMinimalFight();
+    fight.turn = opts.turn ?? { side: 'player', phase: 'play' };
+    setup(fight);
+    const host = createFightHost(fight, opts.seed ?? 'sigil-test-seed');
+    const tick = createTick(host, {
+        rng: Rng.resume(host.rngState),
+        // 这些测试不走 startGame，initDeck 永不被调用；给个空实现满足类型。
+        adapter: { async initDeck() { return [] as number[]; } },
+    });
+    const packet = await handleEvents(tick, events);
+    return { fight: tick.fight, packet };
+}
+
+/** 从 settled 中取指定类型的第一个事件（已类型收窄）。 */
+export function firstEvent<T extends Event['type']>(
+    packet: FightPacket,
+    type: T,
+): Extract<Event, { type: T }> {
+    const found = packet.settled.find(e => e.type === type);
+    if (!found) throw new Error(`Expected event of type ${type}, but settled events were: ${packet.settled.map(e => e.type).join(', ')}`);
+    return found as Extract<Event, { type: T }>;
+}

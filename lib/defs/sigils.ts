@@ -844,7 +844,7 @@ const SIGIL_EFFECTS = {
                     const otherTentacleCards = tentacleCards.filter(([id]) => id !== this.card.print);
                     if (!otherTentacleCards.length) break transform;
 
-                    const [tentacleCard] = otherTentacleCards[Math.floor(Math.random() * otherTentacleCards.length)];
+                    const [tentacleCard] = this.tick.rng.pick(otherTentacleCards);
                     const card = this.initCard(tentacleCard);
                     card.state.flipped = true;
                     this.createEvent('transform', {
@@ -994,7 +994,7 @@ const SIGIL_EFFECTS = {
                     side,
                     amount: cost,
                 });
-                const power = Math.floor(Math.random() * 6) + 1;
+                const power = this.tick.rng.intInclusive(1, 6);
                 this.createEvent('stats', {
                     pos: event.pos,
                     power,

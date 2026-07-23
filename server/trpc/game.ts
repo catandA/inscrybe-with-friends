@@ -8,18 +8,22 @@ import { FightHost, createFightHost, createTick } from '@/lib/engine/Host';
 import { FIGHT_SIDES, FightSide, createFight, translateFight } from '@/lib/engine/Fight';
 import { FightPacket, handleAction, handleResponse, startGame, translatePacket } from '@/lib/engine/Tick';
 import { Event, translateEvent } from '@/lib/engine/Events';
-import { clone, entries, fromEntries, shuffle } from '@/lib/utils';
+import { Rng } from '@/lib/engine/Rng';
+import { clone, entries, fromEntries } from '@/lib/utils';
 import { Prisma } from '@prisma/client';
 import { triggerFightPacket, triggerGameEnd, triggerLobbyGameStart, triggerLobbyRefetch } from '../pusher';
 import { LogContext, logger } from '../logger';
 import { randomUUID } from 'crypto';
 
 const newTick = (host: FightHost, ctx?: LogContext) => {
+    // 从持久化的 rngState 重建 RNG，保证跨多次 action 的随机序列连续。
+    const rng = Rng.resume(host.rngState);
     const tick = createTick(host, {
+        rng,
         adapter: {
             async initDeck(side, deckType) {
                 const idxs = this.fight.decks[side][deckType].map((card, i) => i);
-                return shuffle(idxs);
+                return this.rng.shuffle(idxs);
             },
         },
         logger: {
@@ -152,9 +156,9 @@ export const gameRouter = router({
                     player: zDeckCards.parse(playerDeck.cards),
                     opposing: zDeckCards.parse(opposingDeck.cards),
                 });
-                const host = createFightHost(fight);
-
                 const gameId = randomUUID();
+                // 用 gameId 作为 RNG 种子并持久化到 Game.seed，供 Phase 4 回放复现。
+                const host = createFightHost(fight, gameId);
 
                 logger.debug('Starting lobby game', { lobbyId: input.lobbyId, gameId });
 
@@ -167,6 +171,7 @@ export const gameRouter = router({
                     data: {
                         id: gameId,
                         lobbyId: lobby.id,
+                        seed: host.seed,
                         players: { createMany: { data: [
                             { userId: sides.player, side: 'player' },
                             { userId: sides.opposing, side: 'opposing' },
