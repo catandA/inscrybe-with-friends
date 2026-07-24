@@ -28,6 +28,8 @@ scripts/seed
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
 /TEST/
 /reference/
 /.idea/
+/.trae/

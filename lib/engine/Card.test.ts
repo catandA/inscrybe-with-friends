@@ -22,9 +22,8 @@ describe('getCardPower', () => {
         expect(getCardPower(PRINTS, fight, ['player', 0])).toBe(2);
     });
 
-    it('"ants" power：场上 3 张 ant tribe 卡 → Math.min(2, 3) = 2', () => {
-        // 锁住 Card.ts:118 的 Math.min(2, antCount) 硬编码。
-        // Phase 1 修复 ant_limit（读 fight.opts.antLimit）后此测试需更新。
+    it('"ants" power：默认 antLimit=2 时 3 张 ant → 2', () => {
+        // 验证默认 antLimit=2 与旧硬编码行为一致。
         const fight = makeMinimalFight();
         placeCard(fight, 'player', 0, 'workerAnt');
         placeCard(fight, 'player', 1, 'workerAnt');
@@ -32,14 +31,28 @@ describe('getCardPower', () => {
         expect(getCardPower(PRINTS, fight, ['player', 0])).toBe(2);
     });
 
-    it('"moxes" power：仅统计 Green gem（当前 bug，Phase 1 修复为统计全部 Mox）', () => {
-        // Card.ts:134 当前：getMoxes([card]) & MoxType.Green —— 只算 Green。
-        // 场上 greenMage(power='moxes') + moxG(Green) + moxO(Orange, 无 Green) → 计数 1。
-        // Godot 原版应统计所有 Mox → 应为 2。Phase 1 修 moxes bug 后此测试改为 2。
+    it('"ants" power：自定义 antLimit 突破 2', () => {
+        const fight = makeMinimalFight({ antLimit: 5 });
+        placeCard(fight, 'player', 0, 'workerAnt');
+        placeCard(fight, 'player', 1, 'workerAnt');
+        placeCard(fight, 'player', 2, 'workerAnt');
+        placeCard(fight, 'player', 3, 'workerAnt');
+        expect(getCardPower(PRINTS, fight, ['player', 0])).toBe(4);
+    });
+
+    it('"moxes" power：统计所有 Mox 卡（绿/橙/蓝都算）', () => {
+        // 场上 greenMage(power='moxes') + moxG(Green) + moxO(Orange) → 计数 2。
         const fight = makeMinimalFight();
         placeCard(fight, 'player', 0, 'greenMage');
         placeCard(fight, 'player', 1, 'moxG');
         placeCard(fight, 'player', 2, 'moxO');
+        expect(getCardPower(PRINTS, fight, ['player', 0])).toBe(2);
+    });
+
+    it('"moxes" power：gainGemAll 卡算 1 张 Mox 卡', () => {
+        const fight = makeMinimalFight();
+        placeCard(fight, 'player', 0, 'greenMage');
+        placeCard(fight, 'player', 1, 'moxAll'); // Magnus Mox, sigils: ['gainGemAll']
         expect(getCardPower(PRINTS, fight, ['player', 0])).toBe(1);
     });
 

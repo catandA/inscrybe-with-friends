@@ -51,8 +51,9 @@ export const eventSettlers: {
     },
     energy(fight, event) {
         const { energy } = fight.players[event.side];
-        energy[0] = Math.min(6, energy[0] + event.amount);
-        if (event.total) energy[1] = Math.min(6, energy[1] + event.total);
+        const maxEnergy = fight.opts.maxEnergy;
+        energy[0] = Math.min(maxEnergy, energy[0] + event.amount);
+        if (event.total) energy[1] = Math.min(maxEnergy, energy[1] + event.total);
         energy[1] = Math.max(energy[1], energy[0]);
     },
     energySpend(fight, event) {

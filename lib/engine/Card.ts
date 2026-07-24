@@ -115,7 +115,7 @@ export function getCardPower(prints: Record<string, CardPrint>, fight: Fight<'pl
     // Base damage
     if (card.state.power === 'ants') {
         const antCount = fight.field[side].filter(card => card ? prints[card.print].tribes?.includes('ant') : false).length;
-        power += Math.min(2, antCount);
+        power += Math.min(fight.opts.antLimit, antCount);
     } else if (card.state.power === 'hand') {
         power += fight.players[side].handSize;
     } else if (card.state.power === 'bells') {
@@ -131,7 +131,7 @@ export function getCardPower(prints: Record<string, CardPrint>, fight: Fight<'pl
         if (opposing != null && opposing.state.power !== 'mirror')
             power += getCardPower(prints, fight, opposingPos) ?? 0;
     } else if (card.state.power === 'moxes') {
-        power += fight.field[side].map<number>(card => getMoxes([card]) & MoxType.Green ? 1 : 0).reduce((a, b) => a + b, 0);
+        power += fight.field[side].filter(card => getMoxes([card])).length;
     } else {
         power += card.state.power;
     }

@@ -16,6 +16,8 @@ export const zFightOptions = z.object({
     lives: z.number(),
     hammersPerTurn: z.number(),
     ruleset: z.string(),
+    antLimit: z.number(),
+    maxEnergy: z.number(),
 }) satisfies z.ZodType<FightOptions>;
 
 export const defaultFightOptions = (ruleset = 'imfComp'): FightOptions => ({
@@ -25,6 +27,8 @@ export const defaultFightOptions = (ruleset = 'imfComp'): FightOptions => ({
     startingHand: 3,
     hammersPerTurn: 1,
     ruleset,
+    antLimit: 2,
+    maxEnergy: 6,
 });
 
 export const zDeckCards = z.object({

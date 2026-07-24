@@ -7,14 +7,12 @@ import { runEvents, firstEvent } from './__testutils__/runTick';
 /**
  * 符文行为快照测试。
  *
- * 这些测试锁住「当前行为」（含已知的 bug），作为后续 Phase 1-2 重构的安全网：
+ * 这些测试验证符文行为：
  * - voidDamage：单目标取消 attack（与 Godot 一致，PORTING_PLAN §4.11）
  * - drawCopy：复制体去 sigil（当前=Kaycee 行为，§4.12）
- * - conduitGainEnergy：硬编码 total=3、未检查 circuit（§4.7 bug）
+ * - conduitGainEnergy：circuit 完成时读 sigilParams 提升能量上限（§4.7 已修复）
  * - antSpawner：抽 sigilParams 指定的卡
  * - bellist：相邻空格生成卡
- *
- * Phase 1-2 修复这些 bug 时，对应测试需同步更新（届时会在此处标注）。
  */
 describe('符文行为快照', () => {
 
@@ -63,11 +61,12 @@ describe('符文行为快照', () => {
         });
     });
 
-    describe('conduitGainEnergy (Energy Conduit (+3), 当前有 bug)', () => {
-        it('pre-turn 阶段触发 energy 事件，total 硬编码 3', async () => {
+    describe('conduitGainEnergy (Energy Conduit (+3))', () => {
+        it('完整 circuit 时 pre-turn 提升 max energy，total 来自 sigilParams', async () => {
             const { packet } = await runEvents(
                 (fight) => {
-                    placeCard(fight, 'player', 0, 'conduitEnergy'); // conduit:true, sigils:['conduitGainEnergy']
+                    placeCard(fight, 'player', 0, 'conduitEnergy'); // conduit + conduitGainEnergy
+                    placeCard(fight, 'player', 2, 'franknstein');   // conduit，完成 circuit
                 },
                 [{ type: 'phase', phase: 'pre-turn', side: 'player' } as Event],
             );
@@ -77,19 +76,31 @@ describe('符文行为快照', () => {
             expect(types).toContain('energy');
 
             const energyEvent = firstEvent(packet, 'energy');
-            // 锁住当前 bug：total 硬编码 3（sigils.ts:1076），
-            // 未读 sigilParams.conduitGainEnergy = [3]（prints.ts:1157），
-            // 也未检查 circuit（sigils.ts:1072 的 TODO）。
-            // Phase 2 修复时：total 应来自 sigilParams，且需 circuit 守卫。
-            expect(energyEvent.total).toBe(3);
+            expect(energyEvent.total).toBe(3);   // sigilParams.conduitGainEnergy = [3]
             expect(energyEvent.amount).toBe(0);
             expect(energyEvent.side).toBe('player');
+        });
+
+        it('单张 conduit 不成 circuit → 不触发 conduitGainEnergy 的 energy 事件', async () => {
+            const { packet } = await runEvents(
+                (fight) => {
+                    placeCard(fight, 'player', 0, 'conduitEnergy');
+                },
+                [{ type: 'phase', phase: 'pre-turn', side: 'player' } as Event],
+            );
+            // pre-turn 阶段 defaultEffects 会发恢复能量的 energy 事件（无 total 字段），
+            // 这里要排除的是来自 conduitGainEnergy 的 total=3 事件。
+            const conduitEnergyEvents = packet.settled.filter(
+                (e): e is Extract<Event, { type: 'energy' }> => e.type === 'energy' && e.total === 3,
+            );
+            expect(conduitEnergyEvents).toHaveLength(0);
         });
 
         it('非 pre-turn 阶段不触发（守卫 phase 检查）', async () => {
             const { packet } = await runEvents(
                 (fight) => {
                     placeCard(fight, 'player', 0, 'conduitEnergy');
+                    placeCard(fight, 'player', 2, 'franknstein');
                 },
                 [{ type: 'phase', phase: 'play', side: 'player' } as Event],
             );

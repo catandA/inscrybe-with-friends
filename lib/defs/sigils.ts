@@ -1065,15 +1065,16 @@ const SIGIL_EFFECTS = {
     conduitGainEnergy: {
         runAt: 'field',
         postSettle: {
-            phase(event) {
-                const [side] = this.fieldPos!;
-                const { turn } = this.tick.fight;
+            phase(event, [amount]) {
+                const [side, lane] = this.fieldPos!;
+                const { turn, field } = this.tick.fight;
                 if (turn.phase !== 'pre-turn' || turn.side !== side) return;
-                // TODO: check circuit
+                const circuit = getCircuit(this.prints, field[side]);
+                if (circuit[lane] == null) return;
                 this.createEvent('energy', {
                     side,
                     amount: 0,
-                    total: 3,
+                    total: amount,
                 });
             },
         },

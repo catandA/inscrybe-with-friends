@@ -24,6 +24,8 @@ export interface FightOptions {
     lives: number;
     hammersPerTurn: number;
     ruleset: string;
+    antLimit: number;
+    maxEnergy: number;
 }
 
 export interface Fight<InclSide extends FightSide = never> {
