@@ -20,7 +20,7 @@ type EventMap = {
     draw: { side: FightSide; card?: Card; source?: DeckType; idx?: number };
     perish: { pos: FieldPos; cause: PerishCause };
     triggerAttack: { pos: FieldPos };
-    attack: { from: FieldPos; to: FieldPos; direct?: boolean; damage?: number };
+    attack: { from: FieldPos; to: FieldPos; direct?: boolean; damage?: number; negated?: boolean };
     shoot: { from: FieldPos; to: FieldPos; damage: number };
     play: { pos: FieldPos; card: Card; fromHand?: HandPos; transient?: boolean };
     mustPlay: { side: FightSide; card: number };
@@ -175,7 +175,8 @@ export function isEventInvalid({ fight, host }: FightTick, event: Event) {
     switch (event.type) {
         case 'attack': {
             const damage = event.damage ?? getCardPower(prints, fight, event.from);
-            if (!damage) return true;
+            // Armored 抵消伤害时设 damage=0 + negated=true；negated 的 attack 允许通过（power=0 的卡仍被拦截）
+            if (!damage && !event.negated) return true;
             const [side, lane] = event.from;
             if (!fight.field[side][lane]) return true;
             if (event.from[1] < 0 || event.from[1] >= fight.opts.lanes) return true;

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { FightFeatures, FightOptions, FightSide } from '../engine/Fight';
 import { DeckCards, DeckType } from '../engine/Deck';
 import { Action, ActionRes, PlayerMessage } from '../engine/Actions';
+import { rulesets } from '../defs/prints';
 
 // TODO: make more restrictive: maximum array sizes, print id enums, string max lengths, etc.
 
@@ -15,9 +16,14 @@ export const zFightOptions = z.object({
     startingHand: z.number(),
     lives: z.number(),
     hammersPerTurn: z.number(),
-    ruleset: z.string(),
+    // ruleset 校验加固（避坑 #14）：未知 id 在 Zod 阶段拦截，避免运行时 rulesets[id] 崩溃。
+    ruleset: z.string().refine(id => id in rulesets, { message: 'Unknown ruleset id' }),
     antLimit: z.number(),
     maxEnergy: z.number(),
+    numCandles: z.number(),
+    startingBones: z.number(),
+    deckSizeMin: z.number(),
+    variableAttackNerf: z.boolean(),
 }) satisfies z.ZodType<FightOptions>;
 
 export const defaultFightOptions = (ruleset = 'imfComp'): FightOptions => ({
@@ -29,6 +35,11 @@ export const defaultFightOptions = (ruleset = 'imfComp'): FightOptions => ({
     ruleset,
     antLimit: 2,
     maxEnergy: 6,
+    // Godot default_header 对齐（见 PORTING_PLAN §3.4 A）
+    numCandles: 2,
+    startingBones: 0,
+    deckSizeMin: 1,
+    variableAttackNerf: false,
 });
 
 export const zDeckCards = z.object({

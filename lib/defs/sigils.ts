@@ -167,6 +167,19 @@ const SIGIL_INFOS = {
         name: 'Made of Stone',
         description: 'A card bearing this sigil is immune to the effects of Touch of Death and Stinky.',
     },
+    armored: {
+        name: 'Armored',
+        description: 'When this card would take damage, the damage is negated. This sigil is removed after one use.',
+    },
+    warded: {
+        name: 'Warded',
+        description: 'When this card would take damage, it takes 1 damage instead.',
+    },
+    annoying: {
+        name: 'Annoying',
+        description: 'The creature opposing this card gains 1 [power|Power].',
+        buffs: ['incrOppPower'],
+    },
     skeletonStrafe: {
         name: 'Skeleton Crew',
         description: 'At the end of the owner\'s turn, this card moves in the sigil\'s direction and plays a(n) {0} in the space behind it.',
@@ -816,6 +829,37 @@ const SIGIL_EFFECTS = {
         runAs: 'attackee',
         preSettleWrite: {
             attack() { this.cancel(); },
+        },
+    },
+    armored: {
+        // Godot Armored.gd：首次受伤完全免疫（FULLY_NEGATED_DAMAGE_VAL），之后高亮消失。
+        // Web 用 CardState.armoredUsed 标记替代 Godot 的 Highlight 可见性。
+        runAs: 'attackee',
+        preSettleWrite: {
+            attack(event) {
+                if (this.card.state.armoredUsed) return;
+                this.card.state.armoredUsed = true;
+                event.damage = 0;
+                event.negated = true;  // 防止 isEventInvalid 把 damage=0 的 attack 当无效拦截
+            },
+            shoot(event) {
+                if (this.card.state.armoredUsed) return;
+                this.card.state.armoredUsed = true;
+                event.damage = 0;
+            },
+        },
+    },
+    warded: {
+        // Godot Warded.gd：return max(dmg_amt, 1)（原 bug：至少 1 伤害而非最多 1 伤害）。
+        // Web 修正为「每次最多受 1 伤」（return 1），见 porting-notes.md 偏离记录。
+        runAs: 'attackee',
+        preSettleWrite: {
+            attack(event) {
+                event.damage = 1;
+            },
+            shoot(event) {
+                event.damage = 1;
+            },
         },
     },
     waterborne: {

@@ -115,6 +115,10 @@ function PlayTestPage() {
             ruleset: 'imfComp',
             antLimit: 2,
             maxEnergy: 6,
+            numCandles: 2,
+            startingBones: 0,
+            deckSizeMin: 1,
+            variableAttackNerf: false,
         }, FIGHT_SIDES, decks);
         const host = createFightHost(fight);
 

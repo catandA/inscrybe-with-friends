@@ -26,6 +26,15 @@ export interface FightOptions {
     ruleset: string;
     antLimit: number;
     maxEnergy: number;
+    // Godot default_header 对齐字段（Phase 1 第二批新增）
+    /** 对齐 Godot num_candles；当前与 lives 同义，Phase 2 吹蜡烛机制将统一到此字段。 */
+    numCandles: number;
+    /** 对齐 Godot starting_bones；createFight 时写入 PlayerState.bones。 */
+    startingBones: number;
+    /** 对齐 Godot deck_size_min；牌组校验待 Phase 1 后续实现，先占位。 */
+    deckSizeMin: number;
+    /** 对齐 Godot variable_attack_nerf；true 时动态 power（string）卡伤害削为 1。 */
+    variableAttackNerf: boolean;
 }
 
 export interface Fight<InclSide extends FightSide = never> {
@@ -76,8 +85,8 @@ export function createFight<Side extends FightSide = never>(opts: FightOptions, 
             opposing: Array(opts.lanes).fill(null),
         },
         players: {
-            player: initPlayerState(),
-            opposing: initPlayerState(),
+            player: { ...initPlayerState(), bones: opts.startingBones },
+            opposing: { ...initPlayerState(), bones: opts.startingBones },
         },
         hands,
         mustPlay,

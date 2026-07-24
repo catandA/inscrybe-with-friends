@@ -151,4 +151,129 @@ describe('符文行为快照', () => {
             expect(fight.field.player[2]?.print).toBe('chime');
         });
     });
+
+    describe('armored (Armored)', () => {
+        it('首次 attack 完全免疫：target health 不变，armoredUsed=true', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const defender = placeCard(fight, 'opposing', 0, 'adder');
+                    defender.state.sigils = ['armored'];
+                    defender.state.health = 5;
+                    const attacker = placeCard(fight, 'player', 0, 'adder');
+                    attacker.state.sigils = [];
+                    attacker.state.power = 3;
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
+            );
+
+            // attack 事件仍 settle（被 Armored 设 damage=0 + negated，不算无效）
+            expect(packet.settled.some(e => e.type === 'attack')).toBe(true);
+            // 防御方未受伤
+            expect(fight.field.opposing[0]?.state.health).toBe(5);
+            // armoredUsed 已置位
+            expect(fight.field.opposing[0]?.state.armoredUsed).toBe(true);
+        });
+
+        it('第二次 attack 正常受伤（armoredUsed 已用）', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    const defender = placeCard(fight, 'opposing', 0, 'adder');
+                    defender.state.sigils = ['armored'];
+                    defender.state.armoredUsed = true; // 已用掉
+                    defender.state.health = 5;
+                    const attacker = placeCard(fight, 'player', 0, 'adder');
+                    attacker.state.sigils = [];
+                    attacker.state.power = 3;
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
+            );
+
+            // 防御方受伤（5 - 3 = 2）
+            expect(fight.field.opposing[0]?.state.health).toBe(2);
+        });
+
+        it('shoot（Detonator 类）也被 Armored 免疫', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    const defender = placeCard(fight, 'opposing', 0, 'adder');
+                    defender.state.sigils = ['armored'];
+                    defender.state.health = 5;
+                    placeCard(fight, 'player', 0, 'adder');
+                },
+                [{ type: 'shoot', from: ['player', 0], to: ['opposing', 0], damage: 5 } as Event],
+            );
+
+            expect(fight.field.opposing[0]?.state.health).toBe(5);
+            expect(fight.field.opposing[0]?.state.armoredUsed).toBe(true);
+        });
+    });
+
+    describe('warded (Warded, 修正 Godot bug)', () => {
+        it('高伤害 attack 削为 1（修正 Godot max(dmg,1) bug）', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    const defender = placeCard(fight, 'opposing', 0, 'adder');
+                    defender.state.sigils = ['warded'];
+                    defender.state.health = 10;
+                    const attacker = placeCard(fight, 'player', 0, 'adder');
+                    attacker.state.sigils = [];
+                    attacker.state.power = 10;
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
+            );
+            // Godot 原 bug 是 max(10,1)=10（仍受 10 伤）；Web 修正为每次最多 1 伤
+            expect(fight.field.opposing[0]?.state.health).toBe(9); // 10 - 1
+        });
+
+        it('shoot 也被 Warded 削为 1', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    const defender = placeCard(fight, 'opposing', 0, 'adder');
+                    defender.state.sigils = ['warded'];
+                    defender.state.health = 10;
+                    placeCard(fight, 'player', 0, 'adder');
+                },
+                [{ type: 'shoot', from: ['player', 0], to: ['opposing', 0], damage: 5 } as Event],
+            );
+            expect(fight.field.opposing[0]?.state.health).toBe(9); // 10 - 1
+        });
+    });
+
+    describe('variable_attack_nerf', () => {
+        it('开启 nerf：动态 power 卡（moxes）伤害削为 1', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    fight.opts.variableAttackNerf = true;
+                    const attacker = placeCard(fight, 'player', 0, 'greenMage'); // power='moxes'
+                    attacker.state.sigils = [];
+                    placeCard(fight, 'player', 1, 'moxG');
+                    placeCard(fight, 'player', 2, 'moxO'); // 2 张 mox → moxes power=2
+                    const defender = placeCard(fight, 'opposing', 0, 'adder');
+                    defender.state.sigils = [];
+                    defender.state.health = 10;
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
+            );
+            // moxes power=2，但 variableAttackNerf 削为 1
+            expect(fight.field.opposing[0]?.state.health).toBe(9); // 10 - 1
+        });
+
+        it('关闭 nerf：动态 power 卡正常伤害', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    fight.opts.variableAttackNerf = false;
+                    const attacker = placeCard(fight, 'player', 0, 'greenMage');
+                    attacker.state.sigils = [];
+                    placeCard(fight, 'player', 1, 'moxG');
+                    placeCard(fight, 'player', 2, 'moxO'); // moxes power=2
+                    const defender = placeCard(fight, 'opposing', 0, 'adder');
+                    defender.state.sigils = [];
+                    defender.state.health = 10;
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
+            );
+            // 无 nerf，moxes power=2 正常造成 2 伤
+            expect(fight.field.opposing[0]?.state.health).toBe(8); // 10 - 2
+        });
+    });
 });

@@ -63,6 +63,11 @@ export interface CardPrint {
     noSac?: boolean;
     tribes?: Tribe[];
 
+    /** 免疫锤子（Godot nohammer）。Phase 1 第二批新增，锤子逻辑待接入。 */
+    noHammer?: boolean;
+    /** Music Player / Jukebot 存储的音乐资源（Godot 端字段名待确认，先占位）。 */
+    song?: string;
+
     sigils?: Sigil[];
     traits?: Trait[];
 
@@ -75,6 +80,8 @@ export interface CardState {
     flipped?: boolean;
     backward?: boolean;
     evolved?: boolean;
+    /** Armored 符文状态标记：true 表示首次免伤已用掉。 */
+    armoredUsed?: boolean;
 }
 
 export type Card = {

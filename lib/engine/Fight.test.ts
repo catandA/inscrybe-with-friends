@@ -47,3 +47,17 @@ describe('translateFight', () => {
         expect(view.points).toEqual({ player: 3, opposing: 5 });
     });
 });
+
+describe('startingBones', () => {
+    it('默认 0：players.bones 为 0', () => {
+        const fight = makeMinimalFight();
+        expect(fight.players.player.bones).toBe(0);
+        expect(fight.players.opposing.bones).toBe(0);
+    });
+
+    it('自定义 startingBones=3：双方 bones 初始化为 3', () => {
+        const fight = makeMinimalFight({ startingBones: 3 });
+        expect(fight.players.player.bones).toBe(3);
+        expect(fight.players.opposing.bones).toBe(3);
+    });
+});

@@ -219,6 +219,12 @@ async function fillEvent(tick: FightTick, event: Event) {
         const target = tick.fight.field[event.to[0]][event.to[1]];
         if (target?.state.flipped) event.direct = true;
         event.damage ??= getCardPower(prints, tick.fight, event.from)!;
+        // variable_attack_nerf：动态 power 卡（typeof state.power === 'string'）伤害削为 1
+        // 放在 ??= 之后、settler 之前；若 preSettleWrite（Armored/Warded）已设 damage，此处不覆盖
+        if (tick.fight.opts.variableAttackNerf && event.damage !== 0) {
+            const attacker = tick.fight.field[event.from[0]][event.from[1]];
+            if (attacker && typeof attacker.state.power === 'string') event.damage = 1;
+        }
     } else if (event.type === 'move') {
         const [toSide, toLane] = event.to;
         if (tick.fight.field[toSide][toLane] != null) event.failed = true;

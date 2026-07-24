@@ -104,3 +104,31 @@ describe('getCircuit', () => {
         expect(getCircuit(fakePrints, field)).toEqual([null, null, null, null]);
     });
 });
+
+describe('Annoying buff (incrOppPower)', () => {
+    it('对面同 lane 卡 +1 攻', () => {
+        const fight = makeMinimalFight();
+        const annoying = placeCard(fight, 'player', 0, 'adder');
+        annoying.state.sigils = ['annoying'];
+        const target = placeCard(fight, 'opposing', 0, 'adder'); // power 2
+        expect(getCardPower(PRINTS, fight, ['opposing', 0])).toBe(3); // 2 + 1
+    });
+
+    it('Made of Stone 免疫 Annoying', () => {
+        const fight = makeMinimalFight();
+        const annoying = placeCard(fight, 'player', 0, 'adder');
+        annoying.state.sigils = ['annoying'];
+        const target = placeCard(fight, 'opposing', 0, 'adder');
+        target.state.sigils = ['stone']; // 覆盖 adder 的 deathTouch，只留 stone
+        expect(getCardPower(PRINTS, fight, ['opposing', 0])).toBe(2); // 不受 annoying 影响
+    });
+
+    it('非对面位置不受影响', () => {
+        const fight = makeMinimalFight();
+        const annoying = placeCard(fight, 'player', 0, 'adder');
+        annoying.state.sigils = ['annoying'];
+        // lane 1 的卡不在对面（annoying 在 player lane 0）
+        placeCard(fight, 'opposing', 1, 'adder');
+        expect(getCardPower(PRINTS, fight, ['opposing', 1])).toBe(2); // 无 buff
+    });
+});

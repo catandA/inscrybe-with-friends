@@ -29,6 +29,18 @@ const BUFFS = {
             };
         },
     },
+    incrOppPower: {
+        // Annoying：对面同 lane 的卡 +1 攻（Godot Annoying.gd stat_modifying_aura）
+        check(fight, source, target) {
+            const [targetSide, targetLane] = target;
+            const targetCard = fight.field[targetSide][targetLane];
+            if (!positions.isOpposing(source, target)) return null;
+            if (targetCard?.state.sigils.includes('stone')) return null;
+            return {
+                power: 1,
+            };
+        },
+    },
     incrMoxPower: {
         check(fight, source, target) {
             const { prints } = rulesets[fight.opts.ruleset];

@@ -156,6 +156,10 @@ export function getTargets(fight: Fight<FightSide> | null, event: Event): Effect
 
             if (!event.direct) targets.attackee = ['field', event.to];
             break;
+        case 'shoot':
+            // shoot（Detonator/Sentry/sharp 反击）也设 attackee，让 Warded/Armored 等防御符文能覆盖
+            targets.attackee = ['field', event.to];
+            break;
         case 'perish':
         case 'activate':
         case 'play':
