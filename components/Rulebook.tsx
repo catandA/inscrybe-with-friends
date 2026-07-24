@@ -9,8 +9,10 @@ import { CardSprite } from './sprites/CardSprite';
 import { rulesets } from '@/lib/defs/prints';
 import { memo } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 
 export function Rulebook() {
+    const { t } = useTranslation();
     const entry = useRulebook(state => state.entry);
     const ruleset = useRulebook(state => state.currentRuleset);
     const entryData = useEntryData();
@@ -39,7 +41,7 @@ export function Rulebook() {
                         </Text>
                     </div>
                 </> : (
-                    <Text>Missing Entry ({ entry.id })</Text>
+                    <Text>{t('rulebook.missingEntry', { id: entry.id })}</Text>
                 )}
             </div>
         </motion.div>}

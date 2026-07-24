@@ -9,13 +9,16 @@ import { Text } from '../ui/Text';
 import { Range } from '../inputs/Range';
 import { Button } from '../inputs/Button';
 import { useShallow } from 'zustand/shallow';
+import { useTranslation } from 'react-i18next';
 import { trpc } from '@/lib/trpc';
 import { PRESET_THEMES, applyTheme, type Theme } from '@/lib/themes';
+import { changeLanguage, getCurrentLanguage, LANGUAGES, LANGUAGE_LABELS, type Language } from '@/lib/i18n';
 import { entries } from '@/lib/utils';
 
 const DISCORD_LINK = 'https://discord.gg/me2Me5ztMz';
 
 export function Settings() {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
 
     return <>
@@ -34,20 +37,22 @@ export function Settings() {
                 <VolumeSetting type="music" />
                 <VolumeSetting type="sfx" />
                 <ThemeSetting />
+                <LanguageSetting />
                 <a className={styles.discordLink} href={DISCORD_LINK} target="_blank">
-                    <Button className={styles.discordButton} border="--discord-dark"><Text>Join Discord</Text></Button>
+                    <Button className={styles.discordButton} border="--discord-dark"><Text>{t('settings.joinDiscord')}</Text></Button>
                 </a>
             </Box>
         </div>}
     </>;
 }
 
-const volumeLabel: Record<VolumeType, string> = {
-    all: 'MASTER VOLUME',
-    music: 'MUSIC VOLUME',
-    sfx: 'SOUND EFFECT VOLUME',
+const volumeLabelKey: Record<VolumeType, string> = {
+    all: 'settings.masterVolume',
+    music: 'settings.musicVolume',
+    sfx: 'settings.sfxVolume',
 };
 function VolumeSetting({ type }: { type: VolumeType }) {
+    const { t } = useTranslation();
     const [volume, setVolume] = useSettingsStore(useShallow((state) => [state.volume[type], state.setVolume]));
 
     const onChange = (vol: number) => {
@@ -56,7 +61,7 @@ function VolumeSetting({ type }: { type: VolumeType }) {
     };
 
     return <div className={styles.group}>
-        <Text size={16}>{volumeLabel[type]}</Text>
+        <Text size={16}>{t(volumeLabelKey[type])}</Text>
         <Range min={0} max={1} steps={10} value={volume} onChange={onChange} type="sound" />
     </div>;
 }
@@ -66,6 +71,7 @@ function VolumeSetting({ type }: { type: VolumeType }) {
  * 列出预设主题，点击立即预览 + 保存到 DB。
  */
 function ThemeSetting() {
+    const { t } = useTranslation();
     const user = trpc.user.getUser.useQuery(void 0, {
         refetchOnWindowFocus: false,
     });
@@ -96,7 +102,7 @@ function ThemeSetting() {
     };
 
     return <div className={styles.group}>
-        <Text size={16}>THEME</Text>
+        <Text size={16}>{t('settings.theme')}</Text>
         <div className={styles.themeRow}>
             {entries(PRESET_THEMES).map(([id, preset]) => (
                 <div
@@ -104,10 +110,39 @@ function ThemeSetting() {
                     className={`${styles.themeBtn} ${currentPresetId === id ? styles.active : ''}`}
                     onClick={() => onPickPreset(id)}
                 >
-                    <Text size={12}>{preset.name}</Text>
+                    <Text size={12}>{t(`settings.themePreset.${id}`, { defaultValue: preset.name })}</Text>
                 </div>
             ))}
         </div>
         {setTheme.error && <Text size={10} className={styles.error}>{setTheme.error.message}</Text>}
+    </div>;
+}
+
+/**
+ * Phase 5 语言选择器。
+ * 点击立即切换语言并持久化到 localStorage。
+ */
+function LanguageSetting() {
+    const { t } = useTranslation();
+    const [current, setCurrent] = useState<Language>(getCurrentLanguage());
+
+    const onPick = (lng: Language) => {
+        changeLanguage(lng);
+        setCurrent(lng);
+    };
+
+    return <div className={styles.group}>
+        <Text size={16}>{t('settings.language')}</Text>
+        <div className={styles.themeRow}>
+            {LANGUAGES.map(lng => (
+                <div
+                    key={lng}
+                    className={`${styles.themeBtn} ${current === lng ? styles.active : ''}`}
+                    onClick={() => onPick(lng)}
+                >
+                    <Text size={12}>{LANGUAGE_LABELS[lng]}</Text>
+                </div>
+            ))}
+        </div>
     </div>;
 }

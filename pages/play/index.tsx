@@ -34,7 +34,7 @@ export default function Play() {
                 {playerships.data?.map(playership => (
                     <div key={playership.lobbyId} className={styles.lobby}>
                         <Button className={styles.lobbyBtn} onClick={() => openLobby(playership.lobbyId)}>
-                            <Text fit>{playership.lobby.name ?? `${playership.lobby.owner.name}'s Lobby`}</Text>
+                            <Text fit>{playership.lobby.name ?? t('play.lobbyNameFallback', { owner: playership.lobby.owner.name })}</Text>
                         </Button>
                     </div>
                 ))}

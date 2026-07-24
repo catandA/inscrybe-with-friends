@@ -1,5 +1,7 @@
 import { rulesets } from '@/lib/defs/prints';
 import { Sigil, sigilInfos } from '@/lib/defs/sigils';
+import { getCardDesc, getCardName, getSigilDesc, getSigilName } from '@/lib/defs/i18n';
+import i18n from '@/lib/i18n';
 import { join } from '@/lib/utils';
 import { useMemo } from 'react';
 import { create } from 'zustand';
@@ -115,7 +117,8 @@ export function getEntryData(entry: Entry | null, ruleset: string): EntryData | 
         const sigil = entry.id as Sigil;
         const info = sigilInfos[sigil];
         if (!info) return console.warn('Missing sigil entry: %o', sigil), null;
-        const segments = info.description.split(/(\{.+?\}|\[.+?\])/).filter(s => s).map((frag): EntrySegment => {
+        const desc = getSigilDesc(sigil);
+        const segments = desc.split(/(\{.+?\}|\[.+?\])/).filter(s => s).map((frag): EntrySegment => {
             format: if (frag.startsWith('{')) {
                 const paramIdx = +frag.slice(1, -1);
                 const paramType = info.params?.[paramIdx];
@@ -129,7 +132,7 @@ export function getEntryData(entry: Entry | null, ruleset: string): EntryData | 
             return { type: 'text', text: frag };
         });
         return {
-            title: info.name,
+            title: getSigilName(sigil),
             description: segments,
         };
     } else if (entry.type === 'print') {
@@ -138,7 +141,8 @@ export function getEntryData(entry: Entry | null, ruleset: string): EntryData | 
 
         const segmentParts: EntrySegment[][] = [];
 
-        if (print.desc) segmentParts.push([{ type: 'text', text: print.desc }]);
+        const printDesc = getCardDesc(entry.id, print);
+        if (printDesc) segmentParts.push([{ type: 'text', text: printDesc }]);
 
         for (const sigil of print.sigils ?? []) {
             const sigilData = getEntryData({ type: 'sigil', id: sigil }, ruleset);
@@ -152,7 +156,7 @@ export function getEntryData(entry: Entry | null, ruleset: string): EntryData | 
 
         if (print.evolution) {
             segmentParts.push([
-                { type: 'text', text: 'Evolves into ' },
+                { type: 'text', text: i18n.t('rulebook.evolvesInto') },
                 { type: 'link', tag: `print:${print.evolution}` },
             ]);
         }
@@ -168,7 +172,7 @@ export function getEntryData(entry: Entry | null, ruleset: string): EntryData | 
         }
 
         return {
-            title: print.name,
+            title: getCardName(entry.id, print),
             description: join<EntrySegment>(segmentParts, { type: 'break' }),
         };
     }
@@ -184,10 +188,13 @@ export function isEntryValid(entry: Entry) {
 export function getEntryTagDisplay(ruleset: string, entryTag: string) {
     const match = matchEntryTag(entryTag);
     const entry = parseEntryTag(entryTag);
-    if (!entry) return '(Missing Entry)';
+    if (!entry) return i18n.t('rulebook.missingEntryTag');
     let text = entry.id;
-    if (entry.type === 'sigil') text = sigilInfos[entry.id]?.name;
-    if (entry.type === 'print') text = rulesets[ruleset].prints[entry.id]?.name;
+    if (entry.type === 'sigil') text = getSigilName(entry.id as Sigil);
+    if (entry.type === 'print') {
+        const print = rulesets[ruleset].prints[entry.id];
+        if (print) text = getCardName(entry.id, print);
+    }
     if (match?.text) text = match.text;
     return text;
 }

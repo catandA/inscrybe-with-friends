@@ -1,7 +1,9 @@
 import { isClient } from '@/lib/utils';
 import { useRouter } from 'next/router';
+import { useTranslation } from 'react-i18next';
 
 export default function AuthError() {
+    const { t } = useTranslation();
     const router = useRouter();
     const errorCode = typeof router.query.error === 'string' ? router.query.error : null;
 
@@ -12,5 +14,6 @@ export default function AuthError() {
         window.close();
     }
 
-    return <p>An internal error occured: {errorCode || 'Unknown error (this is bad)'}</p>;
+    const detail = errorCode ?? t('auth.unknownError');
+    return <p>{t('auth.internalError', { detail })}</p>;
 }

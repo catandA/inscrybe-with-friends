@@ -4,33 +4,35 @@ import { Text } from '../ui/Text';
 import { intersperseFn } from '@/lib/utils';
 import { useRouter } from 'next/router';
 import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 
 type Part = {
-    name: string;
+    /** i18n key under `nav.*` for this breadcrumb. */
+    nameKey: string;
     params?: number;
     parts?: Partial<Record<string, Part>>;
 };
 const rootParts: Partial<Record<string, Part>> = {
     play: {
-        name: 'Play',
+        nameKey: 'play',
         parts: {
             playtest: {
-                name: 'Playtest',
+                nameKey: 'playtest',
             },
             lobby: {
-                name: 'Lobby',
+                nameKey: 'lobby',
                 params: 1,
                 parts: {
                     game: {
-                        name: 'Game',
+                        nameKey: 'game',
                     },
                 },
             },
             'edit-decks': {
-                name: 'Edit Decks',
+                nameKey: 'editDecks',
             },
             rulesets: {
-                name: 'Rulesets',
+                nameKey: 'rulesets',
                 params: 1,
             },
         },
@@ -61,6 +63,7 @@ function parsePathname(pathname: string) {
 }
 
 export function Breadcrumbs() {
+    const { t } = useTranslation();
     const router = useRouter();
     const paths = parsePathname(router.asPath);
     const crumbs = paths.slice(0, -1);
@@ -70,15 +73,19 @@ export function Breadcrumbs() {
     const pathEls: ReactNode[] = [];
 
     for (const crumb of crumbs) {
-        pathEls.push(<div key={crumb.name} className={styles.crumb} onClick={() => {
+        const name = t(`nav.${crumb.nameKey}`);
+        pathEls.push(<div key={crumb.nameKey} className={styles.crumb} onClick={() => {
             router.push(crumb.href);
         }}>
-            <Text size={size}>{crumb.name}</Text>
+            <Text size={size}>{name}</Text>
         </div>);
     }
-    if (current) pathEls.push(<div key={current.name} className={classNames(styles.crumb, styles.current)}>
-        <Text size={size}>{current.name}</Text>
-    </div>);
+    if (current) {
+        const name = t(`nav.${current.nameKey}`);
+        pathEls.push(<div key={current.nameKey} className={classNames(styles.crumb, styles.current)}>
+            <Text size={size}>{name}</Text>
+        </div>);
+    }
 
     return <div className={styles.crumbs}>
         {intersperseFn(pathEls, (i) => <Text key={`sep${i}`} size={size} className={styles.sep}>&gt;</Text>)}

@@ -102,27 +102,27 @@ export default function Spectate() {
         router.push(`/play/lobby/${lobbyId}`);
     };
 
-    const gameIssue = spectate.error ? 'Error getting spectate data' :
-        !gameId ? 'No game has started yet' :
-            !clientReady ? 'Client missing' : 'Unknown error';
+    const gameIssue = spectate.error ? t('spectate.errorGettingData') :
+        !gameId ? t('common.notStarted') :
+            !clientReady ? t('common.clientMissing') : t('common.unknownError');
 
     return <div className={styles.spectate}> {(clientReady && gameId)
         ? <div className={styles.clientRoot}>
             <div className={styles.spectatorBadge}>
-                <Text size={10}>{t('spectate.badge', { defaultValue: 'SPECTATING (read-only)' })}</Text>
+                <Text size={10}>{t('spectate.badge')}</Text>
             </div>
             <Client className={styles.client} id={gameId} readonly />
             {gameEndMessage && <div className={styles.gameEndBackdrop}>
                 <Box className={styles.gameEnd}>
                     <Text size={12}>{gameEndMessage}</Text>
-                    <Button onClick={onBackToLobby}><Text>{t('common.back', { defaultValue: 'Back to Lobby' })}</Text></Button>
+                    <Button onClick={onBackToLobby}><Text>{t('common.backToLobby')}</Text></Button>
                 </Box>
             </div>}
         </div>
         : (spectate.isLoading && gameId) ? <Text>{t('common.loading')}</Text>
             : <div>
                 <Text>{gameIssue}</Text>
-                <Button onClick={onBackToLobby}><Text>{t('common.back', { defaultValue: 'Back to Lobby' })}</Text></Button>
+                <Button onClick={onBackToLobby}><Text>{t('common.backToLobby')}</Text></Button>
             </div>
     }</div>;
 }

@@ -11,8 +11,10 @@ import { subscribeGameEnd, subscribeGamePacket } from '@/lib/pusher';
 import { Client } from '@/components/client/Client';
 import { Button } from '@/components/inputs/Button';
 import { Box } from '@/components/ui/Box';
+import { useTranslation } from 'react-i18next';
 
 export default function Game() {
+    const { t } = useTranslation();
     const router = useRouter();
     const lobbyId = router.query.lobbyId as string;
     const lobby = trpc.lobbies.get.useQuery({
@@ -94,9 +96,9 @@ export default function Game() {
         return () => window.removeEventListener('keydown', onClientKeyDown);
     }, []);
 
-    const gameIssue = game.error ? 'Error getting game data' :
-        !gameId ? 'No game has started yet' :
-            !clientReady ? 'Client missing' : 'Unknown error';
+    const gameIssue = game.error ? t('game.errorGettingData') :
+        !gameId ? t('game.notStarted') :
+            !clientReady ? t('common.clientMissing') : t('common.unknownError');
 
     return <div className={styles.game}> {(clientReady && gameId)
         ? <div className={styles.clientRoot}>
@@ -104,14 +106,14 @@ export default function Game() {
             {gameEndMessage && <div className={styles.gameEndBackdrop}>
                 <Box className={styles.gameEnd}>
                     <Text size={12}>{gameEndMessage}</Text>
-                    <Button onClick={onBackToLobby}><Text>Back to Lobby</Text></Button>
+                    <Button onClick={onBackToLobby}><Text>{t('common.backToLobby')}</Text></Button>
                 </Box>
             </div>}
         </div>
-        : (game.isLoading && gameId) ? <Text>Getting game data...</Text>
+        : (game.isLoading && gameId) ? <Text>{t('game.gettingData')}</Text>
             : <div>
                 <Text>{gameIssue}</Text>
-                <Button onClick={onBackToLobby}><Text>Back to Lobby</Text></Button>
+                <Button onClick={onBackToLobby}><Text>{t('common.backToLobby')}</Text></Button>
             </div>
     }</div>;
 }

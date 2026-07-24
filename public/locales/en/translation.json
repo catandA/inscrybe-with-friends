@@ -1,14 +1,224 @@
 {
     "common": {
-        "loading": "Loading..."
+        "loading": "Loading...",
+        "back": "Back",
+        "backToLobby": "Back to Lobby",
+        "vs": "vs",
+        "on": "ON",
+        "off": "OFF",
+        "yes": "Y",
+        "no": "N",
+        "clientMissing": "Client missing",
+        "unknownError": "Unknown error",
+        "notStarted": "No game has started yet"
     },
     "notFound": {
         "title": "404",
         "message": "Page not found"
     },
+    "nav": {
+        "play": "Play",
+        "playtest": "Playtest",
+        "lobby": "Lobby",
+        "game": "Game",
+        "editDecks": "Edit Decks",
+        "rulesets": "Rulesets"
+    },
+    "settings": {
+        "masterVolume": "MASTER VOLUME",
+        "musicVolume": "MUSIC VOLUME",
+        "sfxVolume": "SOUND EFFECT VOLUME",
+        "theme": "THEME",
+        "language": "LANGUAGE",
+        "joinDiscord": "Join Discord",
+        "themePreset": {
+            "default": "Default",
+            "light": "Light",
+            "sepia": "Sepia",
+            "midnight": "Midnight Blue",
+            "forest": "Forest"
+        }
+    },
+    "discord": {
+        "title": "Hi players!",
+        "body": "I made a <0>Discord server</0> for Inscrybe w/ Friends. At some point I may have more time to work on this fangame, and I would love to hear your feedback on things",
+        "joined": "Omg sick I joined",
+        "joinLater": "I'll join later in Settings"
+    },
+    "rulebook": {
+        "missingEntry": "Missing Entry ({{id}})",
+        "missingEntryTag": "(Missing Entry)",
+        "evolvesInto": "Evolves into "
+    },
     "play": {
         "lobbies": "Lobbies",
         "createLobby": "Create Lobby",
-        "editDecks": "Edit Decks"
+        "editDecks": "Edit Decks",
+        "rulesets": "Custom Rulesets",
+        "replays": "Replays",
+        "lobbyNameFallback": "{{owner}}'s Lobby"
+    },
+    "decks": {
+        "rulesetLoading": "Ruleset is loading...",
+        "newDeckName": "New Deck ({{n}})",
+        "selectRulesetPlaceholder": "Select Ruleset",
+        "selectDeckPlaceholder": "Select a Deck",
+        "clearDeck": "Clear Deck",
+        "createDeckTitle": "Create New Deck",
+        "saveDeckTitle": "Save Deck",
+        "deleteDeckTitle": "Delete Deck",
+        "synced": "Synced",
+        "syncing": "Syncing",
+        "errorSaving": "Error while saving deck",
+        "cardCount_one": "{{count}} card",
+        "cardCount_other": "{{count}} cards",
+        "emptyDeck": "No cards in your deck, add them by selecting them on the right",
+        "sideDeckLabel": "Side Deck:",
+        "validation": {
+            "deckSizeMin": "Main deck needs at least {{n}} cards",
+            "rareLimit": "Rare cards limited to 1 in main deck",
+            "maxCommonsMain": "Each common card limited to {{n}} in main deck",
+            "maxCommonsSide": "Each common card limited to {{n}} in side deck"
+        }
+    },
+    "rulesets": {
+        "customSuffix": " (custom)",
+        "baseLabel": "Base: ",
+        "idLabel": "id: ",
+        "notFound": "Ruleset not found",
+        "unknownBase": "Unknown base ruleset: {{baseId}}",
+        "reset": "reset",
+        "snuffCardLabel": "Snuff Card (printId)",
+        "powerLabel": "PWR",
+        "healthLabel": "HP",
+        "bannedLabel": "BANNED",
+        "sigilsLabel": "SIGILS",
+        "sigilsPlaceholder": "comma-separated sigil ids",
+        "title": "Custom Rulesets",
+        "createNew": "Create New Ruleset",
+        "delete": "Delete",
+        "edit": "Edit",
+        "duplicate": "Duplicate",
+        "name": "Name",
+        "baseRuleset": "Base Ruleset",
+        "save": "Save",
+        "saved": "Saved",
+        "resetAll": "Reset All",
+        "printsOverrides": "Print Overrides",
+        "addPrintOverride": "Add Print Override",
+        "namePlaceholder": "New ruleset name",
+        "copyName": "Copy",
+        "create": "Create",
+        "confirmDelete": "Delete this ruleset?",
+        "fightOptions": "Fight Options",
+        "cardOverrides": "Card Overrides",
+        "filterPlaceholder": "Filter by name or id...",
+        "tooMany": "Showing first 100. Use filter to narrow down.",
+        "builtin": "Built-in Rulesets (fork to customize)",
+        "fork": "Fork",
+        "empty": "No custom rulesets yet. Create one above.",
+        "opt": {
+            "lanes": "Lanes",
+            "lives": "Lives (candles)",
+            "startingHand": "Starting Hand",
+            "hammersPerTurn": "Hammers per Turn",
+            "antLimit": "Ant Limit",
+            "maxEnergy": "Max Energy",
+            "numCandles": "Num Candles",
+            "startingBones": "Starting Bones",
+            "deckSizeMin": "Deck Size Min",
+            "maxCommonsMain": "Max Commons (Main)",
+            "maxCommonsSide": "Max Commons (Side)",
+            "variableAttackNerf": "Variable Attack Nerf",
+            "optActives": "Optional Actives",
+            "allowSnuffingCandles": "Allow Snuffing Candles"
+        }
+    },
+    "lobby": {
+        "lobby": "Lobby",
+        "ruleset": "Ruleset",
+        "selectRulesetPlaceholder": "Select Ruleset",
+        "deleteLobby": "Delete Lobby",
+        "game": "Game",
+        "selectPlayerPlaceholder": "Select Player",
+        "startGame": "Start Game",
+        "players": "Players",
+        "leaderBadge": " [LEADER]",
+        "selectDeckPlaceholder": "Select Deck",
+        "noDeckSelectedPlaceholder": "No Deck Selected",
+        "leaveGame": "Leave Game",
+        "joinGame": "Join Game",
+        "enterGame": "Enter Game",
+        "spectateGame": "Spectate Game",
+        "forfeitGame": "Forfeit Game",
+        "lobbyDeleted": "Lobby was deleted",
+        "lobbyNotFound": "Lobby not found",
+        "spectating": "SPECTATING (read-only)"
+    },
+    "game": {
+        "errorGettingData": "Error getting game data",
+        "notStarted": "No game has started yet",
+        "gettingData": "Getting game data..."
+    },
+    "spectate": {
+        "errorGettingData": "Error getting spectate data",
+        "badge": "SPECTATING (read-only)"
+    },
+    "playtest": {
+        "veryBroken": "Something is VERY Broken",
+        "deleteAndRefresh": "Delete Game and Refresh",
+        "selectRulesetPlaceholder": "Select Ruleset",
+        "sidePlayer": "Player",
+        "sideOpposing": "Opposing",
+        "noDecks": "No decks",
+        "selectDeckPlaceholder": "Select Deck",
+        "startFight": "Start Fight",
+        "killGame": "Kill Game",
+        "switchSide": "Switch Side",
+        "autoSwitchOn": "Auto Switch: ON",
+        "autoSwitchOff": "Auto Switch: OFF",
+        "skipDrawOn": "Skip Draw Phase: ON",
+        "skipDrawOff": "Skip Draw Phase: OFF",
+        "devMenu": "Dev Menu",
+        "playingAs": "Playing as"
+    },
+    "client": {
+        "missing": "CLIENT MISSING",
+        "error": "CLIENT ERROR"
+    },
+    "debug": {
+        "queue": "Queue",
+        "settled": "Settled",
+        "yours": "Yours",
+        "theirs": "Their's",
+        "turnLabel": "Turn: ",
+        "phaseLabel": " | Phase: "
+    },
+    "dev": {
+        "close": "Close",
+        "spawnCard": "Spawn Card",
+        "energyPlus1": "Energy +1",
+        "bonesPlus1": "Bones +1"
+    },
+    "auth": {
+        "signIn": "Sign in",
+        "signInWithDiscord": "Sign in with Discord",
+        "userAvatarAlt": "User avatar",
+        "unknownError": "Unknown error (this is bad)",
+        "internalError": "An internal error occured: {{detail}}",
+        "successfullySignedIn": "Successfully signed in",
+        "closeWindow": "You can now close this window.",
+        "notVerified": "You must verify your Discord account to sign in."
+    },
+    "replays": {
+        "title": "Replays",
+        "empty": "No completed games yet. Play some games to see replays.",
+        "endedAt": "Ended",
+        "youPlayed": "You played",
+        "watch": "Watch",
+        "restart": "⟲",
+        "step": "▶|",
+        "pause": "⏸",
+        "play": "▶"
     }
 }

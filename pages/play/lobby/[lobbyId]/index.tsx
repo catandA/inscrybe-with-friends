@@ -143,13 +143,13 @@ export default function Lobby() {
     return <div className={styles.lobby}>
         {lobby.data && <div className={styles.panels}>
             <Box>
-                <Text size={12}>Lobby</Text>
+                <Text size={12}>{t('lobby.lobby')}</Text>
                 {/* TODO: Lobby settings editor */}
-                <Text size={11}>Ruleset</Text>
+                <Text size={11}>{t('lobby.ruleset')}</Text>
                 {isOwner && !hasGame ? <Select
                     options={rulesetOptions}
                     className={styles.select}
-                    placeholder="Select Ruleset"
+                    placeholder={t('lobby.selectRulesetPlaceholder')}
                     disabled={changeOptions.isPending || userRulesets.isLoading}
                     value={currentRuleset}
                     onSelect={onSelectRuleset}
@@ -159,26 +159,26 @@ export default function Lobby() {
                     <Button
                         disabled={deleteLobby.isPending}
                         onClick={onDeleteLobby}
-                    ><Text>Delete Lobby</Text></Button>
+                    ><Text>{t('lobby.deleteLobby')}</Text></Button>
                     {deleteLobby.error && <Text>{deleteLobby.error.message}</Text>}
                 </>}
             </Box>
             <Box>
-                <Text size={12}>Game</Text>
+                <Text size={12}>{t('lobby.game')}</Text>
                 <div className={styles.vs}>
                     {(isOwner && !hasGame) ? <Select
                         options={lobby.data.playerships.map(p => [p.userId, p.user.name])}
                         className={styles.select}
-                        placeholder="Select Player"
+                        placeholder={t('lobby.selectPlayerPlaceholder')}
                         disabled={setPlayerSide.isPending}
                         onSelect={id => onSetPlayerSide(id, 'player')}
                         value={player?.userId.toString() ?? ''}
                     /> : <Text size={16}>{player?.user.name ?? '...'}</Text>}
-                    <Text>vs</Text>
+                    <Text>{t('common.vs')}</Text>
                     {(isOwner && !hasGame) ? <Select
                         options={lobby.data.playerships.map(p => [p.userId, p.user.name])}
                         className={styles.select}
-                        placeholder="Select Player"
+                        placeholder={t('lobby.selectPlayerPlaceholder')}
                         disabled={setPlayerSide.isPending}
                         onSelect={id => onSetPlayerSide(id, 'opposing')}
                         value={opposing?.userId.toString() ?? ''}
@@ -188,26 +188,26 @@ export default function Lobby() {
                     <Button
                         disabled={!canStartGame || startGame.isPending}
                         onClick={onStartGame}
-                    ><Text>Start Game</Text></Button>
+                    ><Text>{t('lobby.startGame')}</Text></Button>
                 )}
                 {hasGame && isGameParticipant && (
                     <Button
                         onClick={onEnterGame}
-                    ><Text>{t('lobby.enterGame', { defaultValue: 'Enter Game' })}</Text></Button>
+                    ><Text>{t('lobby.enterGame')}</Text></Button>
                 )}
                 {hasGame && !isGameParticipant && (
                     <Button
                         onClick={onSpectateGame}
-                    ><Text>{t('lobby.spectateGame', { defaultValue: 'Spectate Game' })}</Text></Button>
+                    ><Text>{t('lobby.spectateGame')}</Text></Button>
                 )}
                 {(isInGame && hasGame) && (
                     <Button
                         onClick={onForfeitGame}
-                    ><Text>{t('lobby.forfeitGame', { defaultValue: 'Forfeit Game' })}</Text></Button>
+                    ><Text>{t('lobby.forfeitGame')}</Text></Button>
                 )}
             </Box>
             <Box className={styles.playerPanel}>
-                <Text size={12}>Players</Text>
+                <Text size={12}>{t('lobby.players')}</Text>
                 {lobby.data.playerships.map(playership => (
                     <div key={playership.userId} className={styles.playerRow}>
                         <div className={styles.player}>
@@ -218,13 +218,13 @@ export default function Lobby() {
                                 height={32}
                                 className={styles.profilePicture}
                             />
-                            <Text>{playership.user.name}{playership.user.id === lobby.data?.ownerId ? ' [LEADER]' : ''}</Text>
+                            <Text>{playership.user.name}{playership.user.id === lobby.data?.ownerId ? t('lobby.leaderBadge') : ''}</Text>
                         </div>
                         {Object.values(lobby.data!.sides).includes(`${playership.userId}`)
                         && (playership.userId === user.data?.id ? <Select
                             className={styles.selectDeck}
                             options={decks.data?.map(d => [d.name, d.name]) ?? []}
-                            placeholder="Select Deck"
+                            placeholder={t('lobby.selectDeckPlaceholder')}
                             value={lobby.data?.decks[playership.userId] ?? ''}
                             onSelect={onSelectDeck}
                             disabled={selectOwnDeck.isPending || decks.isLoading}
@@ -235,7 +235,7 @@ export default function Lobby() {
                                 const deckName = lobby.data?.decks[playership.userId];
                                 return deckName ? [[deckName, deckName]] : [];
                             })()}
-                            placeholder="No Deck Selected"
+                            placeholder={t('lobby.noDeckSelectedPlaceholder')}
                             value={lobby.data?.decks[playership.userId] ?? ''}
                             readonly
                         />)}
@@ -245,17 +245,17 @@ export default function Lobby() {
                     <Button
                         disabled={hasGame || pending || isOwner || leaveLobby.isPending}
                         onClick={onLeaveLobby}
-                    ><Text>Leave Game</Text></Button>
+                    ><Text>{t('lobby.leaveGame')}</Text></Button>
                 ) : (
                     <Button
                         disabled={pending || isInGame || joinLobby.isPending}
                         onClick={onJoinLobby}
-                    ><Text>Join Game</Text></Button>
+                    ><Text>{t('lobby.joinGame')}</Text></Button>
                 )}
             </Box>
         </div>}
         {lobby.isFetched && !lobby.data && <Box>
-            <Text size={12}>{lobbyExistedRef.current ? 'Lobby was deleted' : 'Lobby not found'}</Text>
+            <Text size={12}>{lobbyExistedRef.current ? t('lobby.lobbyDeleted') : t('lobby.lobbyNotFound')}</Text>
         </Box>}
     </div>;
 }

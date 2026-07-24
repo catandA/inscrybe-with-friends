@@ -29,15 +29,15 @@ export default function ReplaysList() {
 
     return <div className={styles.list}>
         <Box className={styles.header}>
-            <Text size={16}>{t('replays.title', { defaultValue: 'Replays' })}</Text>
-            <Button onClick={onBack}><Text>{t('common.back', { defaultValue: 'Back' })}</Text></Button>
+            <Text size={16}>{t('replays.title')}</Text>
+            <Button onClick={onBack}><Text>{t('common.back')}</Text></Button>
         </Box>
 
         <Box className={styles.replayList}>
             {replays.isLoading && <Text>{t('common.loading')}</Text>}
             {replays.data?.length === 0 && (
                 <div className={styles.empty}>
-                    <Text size={14}>{t('replays.empty', { defaultValue: 'No completed games yet. Play some games to see replays.' })}</Text>
+                    <Text size={14}>{t('replays.empty')}</Text>
                 </div>
             )}
             {(replays.data ?? []).map(replay => (
@@ -45,15 +45,15 @@ export default function ReplaysList() {
                     <div className={styles.replayInfo}>
                         <Text size={14}>{replay.playerName} vs {replay.opposingName}</Text>
                         <Text size={12}>
-                            {t('replays.endedAt', { defaultValue: 'Ended' })}: {new Date(replay.endedAt).toLocaleString()}
+                            {t('replays.endedAt')}: {new Date(replay.endedAt).toLocaleString()}
                         </Text>
                         <Text size={12}>
-                            {t('replays.youPlayed', { defaultValue: 'You played' })}: {replay.side}
+                            {t('replays.youPlayed')}: {replay.side}
                         </Text>
                     </div>
                     <div className={styles.replayActions}>
                         <Button onClick={() => onOpen(replay.gameId)}>
-                            <Text size={12}>{t('replays.watch', { defaultValue: 'Watch' })}</Text>
+                            <Text size={12}>{t('replays.watch')}</Text>
                         </Button>
                     </div>
                 </div>

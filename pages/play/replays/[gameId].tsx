@@ -151,7 +151,7 @@ export default function ReplayViewer() {
         return <div className={styles.viewer}>
             <Box>
                 <Text size={14}>{replay.error.message}</Text>
-                <Button onClick={onBack}><Text>{t('common.back', { defaultValue: 'Back' })}</Text></Button>
+                <Button onClick={onBack}><Text>{t('common.back')}</Text></Button>
             </Box>
         </div>;
     }
@@ -169,10 +169,10 @@ export default function ReplayViewer() {
         </div>
         <Box className={styles.controls}>
             <div className={styles.controlRow}>
-                <Button onClick={onBack}><Text size={12}>{t('common.back', { defaultValue: 'Back' })}</Text></Button>
-                <Button onClick={onRestart} disabled={replayCursor < 0}><Text size={12}>{t('replays.restart', { defaultValue: '⟲' })}</Text></Button>
-                <Button onClick={onStep} disabled={isAtEnd}><Text size={12}>{t('replays.step', { defaultValue: '▶|' })}</Text></Button>
-                <Button onClick={onTogglePlay}><Text size={12}>{replayPlaying ? t('replays.pause', { defaultValue: '⏸' }) : t('replays.play', { defaultValue: '▶' })}</Text></Button>
+                <Button onClick={onBack}><Text size={12}>{t('common.back')}</Text></Button>
+                <Button onClick={onRestart} disabled={replayCursor < 0}><Text size={12}>{t('replays.restart')}</Text></Button>
+                <Button onClick={onStep} disabled={isAtEnd}><Text size={12}>{t('replays.step')}</Text></Button>
+                <Button onClick={onTogglePlay}><Text size={12}>{replayPlaying ? t('replays.pause') : t('replays.play')}</Text></Button>
                 <Text size={12}>{replayCursor + 1} / {replayLength}</Text>
             </div>
             <div className={styles.progress} onClick={onSeek}>

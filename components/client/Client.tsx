@@ -12,6 +12,7 @@ import { DebugEvents, DebugInfo } from './Debug';
 import { NSlice } from '../ui/NSlice';
 import { useBattleSheet } from '@/hooks/useBattleTheme';
 import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 
 export interface ClientProps {
     id: string
@@ -24,6 +25,7 @@ export interface ClientProps {
     readonly?: boolean
 }
 export const Client = memo(function Client({ id, className, debug, readonly }: ClientProps) {
+    const { t } = useTranslation();
     const battleThemes = useBattleSheet();
     const client = useClientStore(state => state.clients[id]);
 
@@ -69,7 +71,7 @@ export const Client = memo(function Client({ id, className, debug, readonly }: C
                     </div>}
                 </ClientContext.Provider>
             </div> : <Box className={styles.missing}>
-                <Text size={20}>CLIENT MISSING</Text>
+                <Text size={20}>{t('client.missing')}</Text>
             </Box>}
         </ErrorBoundary>
     </div>;
@@ -77,13 +79,14 @@ export const Client = memo(function Client({ id, className, debug, readonly }: C
 
 const realTrace = /^ *at ([\w$.]+) \((?:[\w\-]+:\/\/\/?)?(.+?\.tsx?):(\d+):(\d+)\)$/;
 const ClientError = ({ error }: FallbackProps) => {
+    const { t } = useTranslation();
     let stack: string[] = [];
     if (error instanceof Error && error.stack) {
         for (const line of error.stack.split('\n').slice(1))
             if (realTrace.test(line)) stack.push(line.replace(realTrace, '$1 @ $2:$3:$4'));
     }
     return <Box className={styles.missing}>
-        <Text size={20}>CLIENT ERROR</Text>
+        <Text size={20}>{t('client.error')}</Text>
         <Text size={14}>{`${error}`}</Text>
         {stack.map((line, i) => <Text key={i}>{line}</Text>)}
     </Box>;

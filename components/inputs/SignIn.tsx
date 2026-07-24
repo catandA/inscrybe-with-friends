@@ -6,6 +6,7 @@ import classNames from 'classnames';
 import Image from 'next/image';
 import { Text } from '../ui/Text';
 import { Button } from './Button';
+import { useTranslation } from 'react-i18next';
 
 type ResultMessage = ({
     type: 'signinResult'
@@ -15,6 +16,7 @@ type ResultMessage = ({
 }) | { type: null } | null;
 
 export function SignInButton() {
+    const { t } = useTranslation();
     const [pending, setPending] = useState(false);
     const session = useSession();
     const isSignedIn = session.status === 'authenticated';
@@ -34,15 +36,15 @@ export function SignInButton() {
 
             // TODO - show errors to user
             if (data.error) return console.error(`${AuthErrors[data.error]}`);
-            if (data.internalError) return console.error(`An internal error occured: ${data.internalError}`);
+            if (data.internalError) return console.error(t('auth.internalError', { detail: data.internalError }));
         };
         window.addEventListener('message', listener);
         return () => window.removeEventListener('message', listener);
-    }, []);
+    }, [t]);
 
     const onSignIn = () => {
         if (pending) return;
-        window.open('/auth/signin', 'Sign in with Discord', 'width=500,height=800');
+        window.open('/auth/signin', t('auth.signInWithDiscord'), 'width=500,height=800');
         setPending(true);
     };
     const onSignOut = () => {
@@ -59,9 +61,9 @@ export function SignInButton() {
     >
         {isSignedIn
             ? <>
-                <Image className={styles.avatar} src={session.data.user!.image!} width={16} height={16} alt="User avatar"/>
+                <Image className={styles.avatar} src={session.data.user!.image!} width={16} height={16} alt={t('auth.userAvatarAlt')}/>
                 <Text className={styles.username}>{session.data!.user!.name}</Text>
             </>
-            : <Text>{' Sign in '}</Text>}
+            : <Text>{` ${t('auth.signIn')} `}</Text>}
     </Button>;
 }

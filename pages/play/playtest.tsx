@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 import { rulesets } from '@/lib/defs/prints';
 import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 
 export default function PlayTest() {
     return <ErrorBoundary fallbackRender={TheError}>
@@ -25,6 +26,7 @@ export default function PlayTest() {
 }
 
 function TheError({ error }: FallbackProps) {
+    const { t } = useTranslation();
     const onTryFix = () => {
         useGameStore.getState().deleteLocalGame('playtest');
         window.location.reload();
@@ -34,14 +36,15 @@ function TheError({ error }: FallbackProps) {
 
     return <Box>
         <div>
-            <Text size={14}>Something is VERY Broken</Text>
+            <Text size={14}>{t('playtest.veryBroken')}</Text>
             <Text className={styles.borkStack}>{message}</Text>
-            <Button onClick={onTryFix}><Text size={20}>Delete Game and Refresh</Text></Button>
+            <Button onClick={onTryFix}><Text size={20}>{t('playtest.deleteAndRefresh')}</Text></Button>
         </div>
     </Box>;
 }
 
 function PlayTestPage() {
+    const { t } = useTranslation();
     const { decks: deckStore } = useDeckSync();
     const game = useStore(useGameStore, state => state.localGames.playtest);
     const currentTurn = useStore(useGameStore, state => state.localGames.playtest?.host.fight.turn.side);
@@ -163,16 +166,16 @@ function PlayTestPage() {
         {!game ? <div className={styles.startOptions}>
             <Select
                 options={entries(rulesets).map(([id, ruleset]) => [id, ruleset.name])}
-                placeholder="Select Ruleset"
+                placeholder={t('playtest.selectRulesetPlaceholder')}
                 onSelect={onChangeRuleset}
                 value={ruleset}
             />
             {FIGHT_SIDES.map(side => <div key={side}>
-                <Text>{side[0].toUpperCase() + side.slice(1)}</Text>
+                <Text>{side === 'player' ? t('playtest.sidePlayer') : t('playtest.sideOpposing')}</Text>
                 <Select
                     options={decks.map((deck) => [deck.id, deck.name])}
                     disabled={noDecks}
-                    placeholder={noDecks ? 'No decks' : 'Select Deck'}
+                    placeholder={noDecks ? t('playtest.noDecks') : t('playtest.selectDeckPlaceholder')}
                     onSelect={deckId => setSelectedDecks({ ...selectedDecks, [side]: deckId })}
                     value={selectedDecks[side]}
                 />
@@ -180,18 +183,18 @@ function PlayTestPage() {
             <Button
                 disabled={Object.values(selectedDecks).some(deck => !deck)}
                 onClick={onFightStart}
-            ><Text size={14}>Start Fight</Text></Button>
+            ><Text size={14}>{t('playtest.startFight')}</Text></Button>
         </div> : <div className={classNames(styles.gameRoot, {
             [styles.fullscreen]: fullscreen,
         })} style={{ position: 'relative' }}>
             <Box className={styles.controlsBox}>
                 <div className={styles.controls}>
-                    <Button onClick={onKillGame}><Text>Kill Game</Text></Button>
-                    <Button onClick={onSwitchSide}><Text>Switch Side</Text></Button>
-                    <Button onClick={toggleAutoSwitch}><Text>{autoSwitch ? 'Auto Switch: ON' : 'Auto Switch: OFF'}</Text></Button>
-                    <Button onClick={toggleSkipDraw}><Text>{skipDraw ? 'Skip Draw Phase: ON' : 'Skip Draw Phase: OFF'}</Text></Button>
-                    <Button onClick={() => setDevMode(true)}><Text>Dev Menu</Text></Button>
-                    <Text>Playing as <span style={{ textTransform: 'uppercase' }}>{currentSide}</span></Text>
+                    <Button onClick={onKillGame}><Text>{t('playtest.killGame')}</Text></Button>
+                    <Button onClick={onSwitchSide}><Text>{t('playtest.switchSide')}</Text></Button>
+                    <Button onClick={toggleAutoSwitch}><Text>{autoSwitch ? t('playtest.autoSwitchOn') : t('playtest.autoSwitchOff')}</Text></Button>
+                    <Button onClick={toggleSkipDraw}><Text>{skipDraw ? t('playtest.skipDrawOn') : t('playtest.skipDrawOff')}</Text></Button>
+                    <Button onClick={() => setDevMode(true)}><Text>{t('playtest.devMenu')}</Text></Button>
+                    <Text>{t('playtest.playingAs')} <span style={{ textTransform: 'uppercase' }}>{currentSide}</span></Text>
                 </div>
             </Box>
             <Client className={styles.client} key={clientNonce} id="playtest" debug={!fullscreen} />

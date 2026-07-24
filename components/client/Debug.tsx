@@ -5,8 +5,10 @@ import { animationDurations, useClient } from '@/hooks/useClientStore';
 import { Text } from '../ui/Text';
 import { Box } from '../ui/Box';
 import { stringify } from 'yaml';
+import { useTranslation } from 'react-i18next';
 
 export const DebugEvents = memo(function DebugEvents() {
+    const { t } = useTranslation();
     const client = useClient(true);
     const settledRef = (el: HTMLDivElement | null) => {
         el?.lastElementChild?.scrollIntoView();
@@ -17,9 +19,9 @@ export const DebugEvents = memo(function DebugEvents() {
             {client.queue.map((event, i) => <Event key={i} event={event} i={client.settled.length + i} />)}
         </div>
         <div className={styles.separator}>
-            <Text>Queue</Text>
+            <Text>{t('debug.queue')}</Text>
             <div className={styles.divider} />
-            <Text>Settled</Text>
+            <Text>{t('debug.settled')}</Text>
         </div>
         <div className={styles.stack} ref={settledRef}>
             {client.settled.map((event, i) => <Event key={i} event={event} i={i} />)}
@@ -29,14 +31,15 @@ export const DebugEvents = memo(function DebugEvents() {
 
 
 export const DebugInfo = memo(function DebugInfo() {
+    const { t } = useTranslation();
     const client = useClient(true);
 
-    const displaySide = client.fight.turn.side === 'player' ? 'Yours' : 'Their\'s';
+    const displaySide = client.fight.turn.side === 'player' ? t('debug.yours') : t('debug.theirs');
 
     return <div className={styles.info}>
-        <Text>Turn: <span style={{
+        <Text>{t('debug.turnLabel')}<span style={{
             color: client.fight.turn.side === 'player' ? 'var(--ui)' : 'inherit',
-        }}>{displaySide}</span> | Phase: <span className={styles.phase}>{client.fight.turn.phase}</span></Text>
+        }}>{displaySide}</span>{t('debug.phaseLabel')}<span className={styles.phase}>{client.fight.turn.phase}</span></Text>
         {client.animating && (
             <div className={styles.present} key={client.queue.length}>
                 <div className={styles.progressBar}><div className={styles.progress} style={{

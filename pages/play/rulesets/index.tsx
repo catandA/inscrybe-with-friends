@@ -53,7 +53,7 @@ export default function RulesetsList() {
     const onDuplicate = (sourceId: string) => {
         // 找一个不冲突的新名字
         const existing = rulesetList.data ?? [];
-        const baseName = 'Copy';
+        const baseName = t('rulesets.copyName');
         let n = 1;
         let candidate = baseName;
         const taken = new Set(existing.map(r => r.name));
@@ -76,13 +76,13 @@ export default function RulesetsList() {
 
     return <div className={styles.list}>
         <Box className={styles.header}>
-            <Text size={16}>{t('rulesets.title', { defaultValue: 'Custom Rulesets' })}</Text>
+            <Text size={16}>{t('rulesets.title')}</Text>
             <div className={styles.createRow}>
                 <Select
                     className={styles.nameInput}
                     options={[]}
                     editable
-                    placeholder={t('rulesets.namePlaceholder', { defaultValue: 'New ruleset name' })}
+                    placeholder={t('rulesets.namePlaceholder')}
                     content={newName}
                     onEdit={setNewName}
                 />
@@ -95,7 +95,7 @@ export default function RulesetsList() {
                     disabled={!newName.trim() || createRuleset.isPending}
                     onClick={onCreate}
                 >
-                    <Text>{t('rulesets.create', { defaultValue: 'Create' })}</Text>
+                    <Text>{t('rulesets.create')}</Text>
                 </Button>
             </div>
             {createRuleset.error && <Text size={12} className={styles.error}>{createRuleset.error.message}</Text>}
@@ -105,7 +105,7 @@ export default function RulesetsList() {
             {rulesetList.isLoading && <Text>{t('common.loading')}</Text>}
             {rulesetList.data?.length === 0 && (
                 <div className={styles.empty}>
-                    <Text size={14}>{t('rulesets.empty', { defaultValue: 'No custom rulesets yet. Create one above.' })}</Text>
+                    <Text size={14}>{t('rulesets.empty')}</Text>
                 </div>
             )}
             {(rulesetList.data ?? []).map(ruleset => {
@@ -113,23 +113,23 @@ export default function RulesetsList() {
                 return <div key={ruleset.id} className={styles.rulesetRow}>
                     <div className={styles.rulesetInfo}>
                         <Text size={14}>{ruleset.name}</Text>
-                        <Text size={12}>Base: {baseName}</Text>
+                        <Text size={12}>{t('rulesets.baseLabel')}{baseName}</Text>
                     </div>
                     <div className={styles.rulesetActions}>
                         <Button onClick={() => onOpen(ruleset.id)}>
-                            <Text size={12}>{t('rulesets.edit', { defaultValue: 'Edit' })}</Text>
+                            <Text size={12}>{t('rulesets.edit')}</Text>
                         </Button>
                         <Button
                             disabled={duplicateRuleset.isPending}
                             onClick={() => onDuplicate(ruleset.id)}
                         >
-                            <Text size={12}>{t('rulesets.duplicate', { defaultValue: 'Duplicate' })}</Text>
+                            <Text size={12}>{t('rulesets.duplicate')}</Text>
                         </Button>
                         <Button
                             disabled={deleteRuleset.isPending}
                             onClick={() => onDelete(ruleset.id)}
                         >
-                            <Text size={12}>{t('rulesets.delete', { defaultValue: 'Delete' })}</Text>
+                            <Text size={12}>{t('rulesets.delete')}</Text>
                         </Button>
                     </div>
                 </div>;
@@ -138,19 +138,19 @@ export default function RulesetsList() {
 
         {/* 内置 ruleset fork 区（允许用户从内置 ruleset fork） */}
         <Box className={styles.rulesetList}>
-            <Text size={14}>{t('rulesets.builtin', { defaultValue: 'Built-in Rulesets (fork to customize)' })}</Text>
+            <Text size={14}>{t('rulesets.builtin')}</Text>
             {baseOptions.map(([id, name]) => (
                 <div key={id} className={styles.rulesetRow}>
                     <div className={styles.rulesetInfo}>
                         <Text size={14}>{name}</Text>
-                        <Text size={12}>id: {id}</Text>
+                        <Text size={12}>{t('rulesets.idLabel')}{id}</Text>
                     </div>
                     <div className={styles.rulesetActions}>
                         <Button
                             disabled={duplicateRuleset.isPending}
                             onClick={() => onDuplicate(id)}
                         >
-                            <Text size={12}>{t('rulesets.fork', { defaultValue: 'Fork' })}</Text>
+                            <Text size={12}>{t('rulesets.fork')}</Text>
                         </Button>
                     </div>
                 </div>

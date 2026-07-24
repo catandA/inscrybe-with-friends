@@ -1,5 +1,6 @@
 import styles from './PrintList.module.css';
 import { rulesets } from '@/lib/defs/prints';
+import { getCardName } from '@/lib/defs/i18n';
 import { entries } from '@/lib/utils';
 import { CardSprite } from '../sprites/CardSprite';
 import { Text } from './Text';
@@ -44,7 +45,7 @@ export const PrintList = memo(function PrintList({ onSelect, editable, stacked, 
                         e.preventDefault();
                         openInRulebook(`print:${id}`);
                     }}>
-                        <Text fit>{print.name}</Text>
+                        <Text fit>{getCardName(id, print)}</Text>
                     </div>}
                     <CardSprite print={print} />
                     <HoverBorder color="--ui" top={showNames ? -1 : 0}/>
