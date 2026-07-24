@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { Event } from '../engine/Events';
 import { initCardFromPrint } from '../engine/Card';
 import { PRINTS, placeCard } from '../engine/__testutils__/fight';
-import { runEvents, runAction, firstEvent } from './__testutils__/runTick';
+import { runEvents, runAction, runEventsAndRespond, firstEvent } from './__testutils__/runTick';
 import { ErrorType } from '../engine/Errors';
 
 /**
@@ -456,6 +456,324 @@ describe('符文行为快照', () => {
             expect(fight.field.opposing[0]?.state.health).toBe(10);
             // lane 1 受 5 伤
             expect(fight.field.opposing[1]?.state.health).toBe(5);
+        });
+    });
+
+    describe('thick (Thick, 占两格)', () => {
+        it('右侧空：召唤 rightHalf 到 lane+1，自身变 leftHalf', async () => {
+            const { fight, packet } = await runEvents(
+                () => {},
+                [{
+                    type: 'play',
+                    pos: ['player', 1], // 中间槽，左右都空
+                    card: initCardFromPrint(PRINTS, 'thickDroid'),
+                } as Event],
+            );
+
+            // 原始 play + 召唤 droid 的 play + transform
+            const plays = packet.settled.filter(e => e.type === 'play');
+            expect(plays).toHaveLength(2);
+            expect(packet.settled.some(e => e.type === 'transform')).toBe(true);
+
+            // lane 1 变身为 thick（leftHalf），无 Thick 符文
+            expect(fight.field.player[1]?.print).toBe('thick');
+            expect(fight.field.player[1]?.state.sigils).not.toContain('thick');
+            // lane 2 召唤 droid（rightHalf），无 Thick 符文
+            expect(fight.field.player[2]?.print).toBe('droid');
+            expect(fight.field.player[2]?.state.sigils).not.toContain('thick');
+        });
+
+        it('右侧被占、左侧空：召唤 leftHalf 到 lane-1，自身变 rightHalf', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    // 占住 lane 2，迫使 Thick 向左扩展
+                    placeCard(fight, 'player', 2, 'adder');
+                },
+                [{
+                    type: 'play',
+                    pos: ['player', 1],
+                    card: initCardFromPrint(PRINTS, 'thickDroid'),
+                } as Event],
+            );
+
+            // lane 1 变身为 droid（rightHalf）
+            expect(fight.field.player[1]?.print).toBe('droid');
+            // lane 0 召唤 thick（leftHalf）
+            expect(fight.field.player[0]?.print).toBe('thick');
+            // lane 2 仍是 adder
+            expect(fight.field.player[2]?.print).toBe('adder');
+        });
+
+        it('两侧都被占：不触发召唤和变身，保持原卡', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    placeCard(fight, 'player', 0, 'adder');
+                    placeCard(fight, 'player', 2, 'adder');
+                },
+                [{
+                    type: 'play',
+                    pos: ['player', 1],
+                    card: initCardFromPrint(PRINTS, 'thickDroid'),
+                } as Event],
+            );
+
+            // 只有原始 play，无额外 play/transform
+            const plays = packet.settled.filter(e => e.type === 'play');
+            expect(plays).toHaveLength(1);
+            expect(packet.settled.some(e => e.type === 'transform')).toBe(false);
+
+            // lane 1 仍是 thickDroid，带 Thick 符文
+            expect(fight.field.player[1]?.print).toBe('thickDroid');
+            expect(fight.field.player[1]?.state.sigils).toContain('thick');
+        });
+
+        it('最右槽打出：只能向左扩展', async () => {
+            const { fight } = await runEvents(
+                () => {},
+                [{
+                    type: 'play',
+                    pos: ['player', 3], // 最右槽（4 lanes），右侧无空格
+                    card: initCardFromPrint(PRINTS, 'thickDroid'),
+                } as Event],
+            );
+
+            // lane 3 变身为 droid（rightHalf），lane 2 召唤 thick（leftHalf）
+            expect(fight.field.player[3]?.print).toBe('droid');
+            expect(fight.field.player[2]?.print).toBe('thick');
+        });
+    });
+
+    describe('bombLatch (Bomb Latch)', () => {
+        it('perish 时触发 snipe request，响应后给目标加 detonator', async () => {
+            const { fight, packet, tick } = await runEventsAndRespond(
+                (fight) => {
+                    // Latch 卡在 player lane 0
+                    const latcher = placeCard(fight, 'player', 0, 'adder');
+                    latcher.state.sigils = ['bombLatch'];
+                    // 目标卡在 opposing lane 0
+                    const target = placeCard(fight, 'opposing', 0, 'adder');
+                    target.state.sigils = [];
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+                // 玩家选 opposing lane 0（默认对位，不传 side）
+                { side: 'player', res: { type: 'snipe', lane: 0 } },
+            );
+
+            // perish 触发 snipe request
+            expect(packet.settled.some(e => e.type === 'request')).toBe(true);
+            // 响应后产生 newSigil 事件
+            expect(packet.settled.some(e => e.type === 'newSigil')).toBe(true);
+            // 目标卡获得 detonator
+            expect(fight.field.opposing[0]?.state.sigils).toContain('detonator');
+            // Latch 卡已移除
+            expect(fight.field.player[0]).toBeNull();
+            // 不再等待响应
+            expect(tick.host.waitingFor).toBeNull();
+        });
+
+        it('无其他卡时不触发 request', async () => {
+            const { packet, tick } = await runEventsAndRespond(
+                (fight) => {
+                    // 只有 Latch 卡，无其他卡
+                    const latcher = placeCard(fight, 'player', 0, 'adder');
+                    latcher.state.sigils = ['bombLatch'];
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+                null, // 不提供响应
+            );
+
+            // 无 request 事件
+            expect(packet.settled.some(e => e.type === 'request')).toBe(false);
+            expect(tick.host.waitingFor).toBeNull();
+        });
+
+        it('可选友方目标（传 side=player）', async () => {
+            const { fight } = await runEventsAndRespond(
+                (fight) => {
+                    const latcher = placeCard(fight, 'player', 0, 'adder');
+                    latcher.state.sigils = ['bombLatch'];
+                    // 友方目标在 player lane 1
+                    const ally = placeCard(fight, 'player', 1, 'adder');
+                    ally.state.sigils = [];
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+                // 选 player lane 1（友方）
+                { side: 'player', res: { type: 'snipe', lane: 1, side: 'player' } },
+            );
+
+            // 友方目标获得 detonator
+            expect(fight.field.player[1]?.state.sigils).toContain('detonator');
+        });
+    });
+
+    describe('brittleLatch (Brittle Latch)', () => {
+        it('perish 响应后给目标加 brittle', async () => {
+            const { fight, packet } = await runEventsAndRespond(
+                (fight) => {
+                    const latcher = placeCard(fight, 'player', 0, 'adder');
+                    latcher.state.sigils = ['brittleLatch'];
+                    placeCard(fight, 'opposing', 1, 'adder');
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+                { side: 'player', res: { type: 'snipe', lane: 1 } },
+            );
+
+            expect(packet.settled.some(e => e.type === 'newSigil')).toBe(true);
+            expect(fight.field.opposing[1]?.state.sigils).toContain('brittle');
+        });
+    });
+
+    describe('shieldLatch (Shield Latch)', () => {
+        it('perish 响应后给目标加 armored', async () => {
+            const { fight, packet } = await runEventsAndRespond(
+                (fight) => {
+                    const latcher = placeCard(fight, 'player', 0, 'adder');
+                    latcher.state.sigils = ['shieldLatch'];
+                    placeCard(fight, 'opposing', 2, 'adder');
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+                { side: 'player', res: { type: 'snipe', lane: 2 } },
+            );
+
+            expect(packet.settled.some(e => e.type === 'newSigil')).toBe(true);
+            expect(fight.field.opposing[2]?.state.sigils).toContain('armored');
+        });
+    });
+
+    describe('conduitNoDeplete (Energy Conduit, 能量不耗尽)', () => {
+        it('circuit 完成时 energySpend 被 cancel：能量不扣', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // 两张 conduit 卡完成 circuit；lane 0 带 conduitNoDeplete
+                    const c1 = placeCard(fight, 'player', 0, 'franknstein');
+                    c1.state.sigils = ['conduitNoDeplete'];
+                    placeCard(fight, 'player', 2, 'franknstein');
+                    // 设足够能量
+                    fight.players.player.energy = [5, 5];
+                },
+                [{ type: 'energySpend', side: 'player', amount: 3 } as Event],
+            );
+
+            // energySpend 被 cancel，不入 settled
+            expect(packet.settled.some(e => e.type === 'energySpend')).toBe(false);
+            // 能量未扣减
+            expect(fight.players.player.energy[0]).toBe(5);
+        });
+
+        it('circuit 未完成（单卡）时 energySpend 正常扣减', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const c1 = placeCard(fight, 'player', 0, 'franknstein');
+                    c1.state.sigils = ['conduitNoDeplete'];
+                    // 只有一张 conduit，不构成 circuit
+                    fight.players.player.energy = [5, 5];
+                },
+                [{ type: 'energySpend', side: 'player', amount: 3 } as Event],
+            );
+
+            // energySpend 正常 settle
+            expect(packet.settled.some(e => e.type === 'energySpend')).toBe(true);
+            // 能量扣减
+            expect(fight.players.player.energy[0]).toBe(2);
+        });
+
+        it('只保护本侧能量：opposing 的 energySpend 不受影响', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const c1 = placeCard(fight, 'player', 0, 'franknstein');
+                    c1.state.sigils = ['conduitNoDeplete'];
+                    placeCard(fight, 'player', 2, 'franknstein');
+                    fight.players.opposing.energy = [5, 5];
+                },
+                [{ type: 'energySpend', side: 'opposing', amount: 3 } as Event],
+            );
+
+            // opposing 的 energySpend 正常 settle
+            expect(packet.settled.some(e => e.type === 'energySpend')).toBe(true);
+            expect(fight.players.opposing.energy[0]).toBe(2);
+        });
+    });
+
+    describe('acupuncture/stitched (Acupuncture + Stitched)', () => {
+        it('主动技能：付 3 骨头 snipe 选目标，目标获得 stitched', async () => {
+            const { fight, packet } = await runEventsAndRespond(
+                (fight) => {
+                    const acu = placeCard(fight, 'player', 0, 'adder');
+                    acu.state.sigils = ['acupuncture'];
+                    placeCard(fight, 'player', 1, 'adder'); // 目标
+                    fight.players.player.bones = 5;
+                },
+                [{ type: 'activate', pos: ['player', 0] } as Event],
+                { side: 'player', res: { type: 'snipe', lane: 1, side: 'player' } },
+            );
+
+            // bones 扣 3
+            expect(fight.players.player.bones).toBe(2);
+            // 目标获得 stitched
+            expect(fight.field.player[1]?.state.sigils).toContain('stitched');
+            // newSigil 事件入 settled
+            expect(packet.settled.some(e => e.type === 'newSigil')).toBe(true);
+        });
+
+        it('骨头不足时不触发 request', async () => {
+            const { fight, packet } = await runEventsAndRespond(
+                (fight) => {
+                    const acu = placeCard(fight, 'player', 0, 'adder');
+                    acu.state.sigils = ['acupuncture'];
+                    placeCard(fight, 'player', 1, 'adder');
+                    fight.players.player.bones = 1; // 不足 3
+                },
+                [{ type: 'activate', pos: ['player', 0] } as Event],
+                null, // 不应触发 request
+            );
+
+            // 无 newSigil 事件
+            expect(packet.settled.some(e => e.type === 'newSigil')).toBe(false);
+            // bones 未变
+            expect(fight.players.player.bones).toBe(1);
+            // 目标未获得 stitched
+            expect(fight.field.player[1]?.state.sigils).not.toContain('stitched');
+        });
+
+        it('被动：acupuncture 卡被攻击时，stitched 卡承受攻击者 power 的 shoot', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const attacker = placeCard(fight, 'opposing', 0, 'adder'); // power 2
+                    attacker.state.sigils = [];
+                    const acu = placeCard(fight, 'player', 0, 'adder');
+                    acu.state.sigils = ['acupuncture'];
+                    acu.state.health = 10;
+                    const stitched = placeCard(fight, 'player', 1, 'adder');
+                    stitched.state.sigils = ['stitched'];
+                    stitched.state.health = 10;
+                },
+                [{ type: 'attack', from: ['opposing', 0], to: ['player', 0] } as Event],
+            );
+
+            // acupuncture 卡正常受伤（10 - 2 = 8）
+            expect(fight.field.player[0]?.state.health).toBe(8);
+            // stitched 卡承受 shoot 伤害（10 - 2 = 8）
+            expect(fight.field.player[1]?.state.health).toBe(8);
+            // shoot 事件入 settled
+            expect(packet.settled.some(e => e.type === 'shoot')).toBe(true);
+        });
+
+        it('无 stitched 卡时被动不触发', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const attacker = placeCard(fight, 'opposing', 0, 'adder');
+                    attacker.state.sigils = [];
+                    const acu = placeCard(fight, 'player', 0, 'adder');
+                    acu.state.sigils = ['acupuncture'];
+                    acu.state.health = 10;
+                },
+                [{ type: 'attack', from: ['opposing', 0], to: ['player', 0] } as Event],
+            );
+
+            // acupuncture 卡正常受伤
+            expect(fight.field.player[0]?.state.health).toBe(8);
+            // 无 shoot 事件
+            expect(packet.settled.some(e => e.type === 'shoot')).toBe(false);
         });
     });
 });

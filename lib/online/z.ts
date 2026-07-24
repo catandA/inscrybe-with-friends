@@ -108,6 +108,8 @@ export const zActionRes = z.union([
     z.object({
         type: z.literal('snipe'),
         lane: z.number(),
+        // side 仅 Latch 系列使用（目标可在任意方）；sniper 不传 side
+        side: zFightSide.optional(),
     }),
     z.object({
         type: z.literal('chooseDraw'),

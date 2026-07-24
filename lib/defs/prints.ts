@@ -1109,6 +1109,29 @@ const RULESETS = {
                 sigils: ['conduitSpawner'],
             },
 
+            // Thick 测试卡（对齐 Godot standard.json 的 Thick Droid）
+            thickDroid: {
+                name: 'Thick Droid',
+                power: 1,
+                health: 3,
+                cost: { type: 'energy', amount: 5 },
+                sigils: ['thick'],
+                leftHalf: 'thick',
+                rightHalf: 'droid',
+            },
+            thick: {
+                name: 'Thick',
+                banned: true,
+                power: 1,
+                health: 3,
+            },
+            droid: {
+                name: 'Droid',
+                banned: true,
+                power: 1,
+                health: 3,
+            },
+
         },
         sideDecks: {
             squirrels: {
@@ -1154,6 +1177,7 @@ const RULESETS = {
             activatedSacrificeDraw: [3],
             activatedStatsUpEnergy: [3, 1],
             activatedStatsUp: [3, 1],
+            activatedHealBones: [2, 2],
             conduitGainEnergy: [3],
             conduitSpawner: ['leapingBot'],
         },

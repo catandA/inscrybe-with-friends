@@ -72,6 +72,10 @@ export interface CardPrint {
     traits?: Trait[];
 
     evolution?: string;
+
+    /** Thick 符文（占两格）：打出时召唤到相邻空格的另一半卡 printId。对齐 Godot `left_half`/`right_half`。 */
+    leftHalf?: string;
+    rightHalf?: string;
 }
 export interface CardState {
     power: Stat;

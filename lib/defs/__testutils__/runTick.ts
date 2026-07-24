@@ -6,8 +6,8 @@
  * 触发事件由调用方显式给出，保证完全确定。
  */
 import { createFightHost, createTick } from '@/lib/engine/Host';
-import { handleAction, handleEvents, FightPacket } from '@/lib/engine/Tick';
-import { Action } from '@/lib/engine/Actions';
+import { handleAction, handleEvents, handleResponse, FightPacket, FightTick } from '@/lib/engine/Tick';
+import { Action, ActionRes } from '@/lib/engine/Actions';
 import { Event } from '@/lib/engine/Events';
 import { Fight, FightSide, Phase } from '@/lib/engine/Fight';
 import { Rng } from '@/lib/engine/Rng';
@@ -78,4 +78,45 @@ export function firstEvent<T extends Event['type']>(
     const found = packet.settled.find(e => e.type === type);
     if (!found) throw new Error(`Expected event of type ${type}, but settled events were: ${packet.settled.map(e => e.type).join(', ')}`);
     return found as Extract<Event, { type: T }>;
+}
+
+/**
+ * 推送事件并处理一次 request/response 往返（用于 Latch/Sniper 等需玩家选择的符文）。
+ *
+ * 流程：
+ * 1. handleEvents 推送初始事件 → 若触发 request，host.waitingFor 被设置
+ * 2. 若提供了 response 且 host.waitingFor 已设置，调用 handleResponse 完成选择
+ * 3. 合并两次的 settled 事件返回
+ *
+ * @param setup    在 fight 上放置卡牌、设置状态等
+ * @param events   要推送并结算的事件序列
+ * @param response 玩家选择（side + res）；为 null 时仅推送事件不响应
+ * @param opts     turn / seed
+ */
+export async function runEventsAndRespond(
+    setup: (fight: Fight<FightSide>) => void,
+    events: Event[],
+    response: { side: FightSide; res: ActionRes } | null,
+    opts: RunOpts = {},
+): Promise<RunResult & { tick: FightTick }> {
+    const fight = makeMinimalFight();
+    fight.turn = opts.turn ?? { side: 'player', phase: 'play' };
+    setup(fight);
+    const host = createFightHost(fight, opts.seed ?? 'sigil-test-seed');
+    const tick = createTick(host, {
+        rng: Rng.resume(host.rngState),
+        adapter: { async initDeck() { return [] as number[]; } },
+    });
+    const packet1 = await handleEvents(tick, events);
+
+    let packet2: FightPacket = { settled: [] };
+    if (response && host.waitingFor) {
+        packet2 = await handleResponse(tick, response.side, response.res);
+    }
+
+    return {
+        fight: tick.fight,
+        packet: { settled: [...packet1.settled, ...packet2.settled] },
+        tick,
+    };
 }

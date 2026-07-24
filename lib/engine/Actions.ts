@@ -1,5 +1,6 @@
 import { FightTick } from './Tick';
 import { DeckType } from './Deck';
+import { FightSide } from './Fight';
 
 export type Action<T extends keyof ActionMap = keyof ActionMap> = T extends keyof ActionMap ? (ActionMap[T] & { type: T }) : never;
 export type ActionRes<T extends keyof ResponseMap = keyof ResponseMap> = T extends keyof ResponseMap ? (ResponseMap[T] & { type: T }) : never;
@@ -23,14 +24,13 @@ type ActionMap = {
 };
 
 type ResponseMap = {
-    snipe: { lane: number; };
-    // bombLatch: { direction: 'opposing' | 'left' | 'right' };
+    // side 仅 Latch 系列使用（目标可在任意方）；sniper 不传 side，默认打对位。
+    snipe: { lane: number; side?: FightSide };
     chooseDraw: { idx: number; };
 };
 
 type RequestMap = {
     snipe: {};
-    bombLatch: { lane: number; };
     chooseDraw: { deck: DeckType; choices: number[]; };
 };
 

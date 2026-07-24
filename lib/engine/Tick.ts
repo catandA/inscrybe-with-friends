@@ -258,7 +258,11 @@ async function settleEvents(tick: FightTick) {
 
         const targets = getTargets(tick.fight, event);
 
-        const preSettleSigils = getActiveSigils(tick, event, targets, ['preSettleWrite', 'preSettleRead']);
+        // perish 事件在 settle 后卡牌已移除，requests 必须在 preSettle 阶段（卡牌仍在场时）收集。
+        // 其他事件在 postSettle 阶段收集 requests（保持原行为）。
+        const isPerish = event.type === 'perish';
+        const preSettleSigils = getActiveSigils(tick, event, targets,
+            isPerish ? ['preSettleWrite', 'preSettleRead', 'requests'] : ['preSettleWrite', 'preSettleRead']);
 
         const signals: EffectSignals = { event: false, default: false, prepend: [] };
 
@@ -307,7 +311,8 @@ async function settleEvents(tick: FightTick) {
 
         if (!signals.default) defaultEffects.postSettle[event.type]?.call(tick, clone(event as never));
 
-        const postSettleSigils = getActiveSigils(tick, event, targets, ['postSettle', 'requests']);
+        const postSettleSigils = getActiveSigils(tick, event, targets,
+            isPerish ? ['postSettle'] : ['postSettle', 'requests']);
 
         for (const sigilPos of postSettleSigils.postSettle) {
             cardCtx.pos = sigilPos[0];
@@ -315,8 +320,11 @@ async function settleEvents(tick: FightTick) {
             sigils[sigilPos[1]].postSettle![event.type]!.call(cardCtx, clone(event), ruleset.sigilParams[sigilPos[1]]);
         }
 
+        // perish 事件用 preSettle 阶段收集的 requests（卡牌仍在场）；其他事件用 postSettle 阶段的。
+        const requestSigils = isPerish ? preSettleSigils.requests : postSettleSigils.requests;
+
         let waitingFor: FightHost['waitingFor'] | null = null;
-        for (const sigilPos of postSettleSigils.requests) {
+        for (const sigilPos of requestSigils) {
             cardCtx.pos = sigilPos[0];
             const request = sigils[sigilPos[1]].requests![event.type]!.callFor.call(cardCtx, clone(event as never));
             if (!request) continue;

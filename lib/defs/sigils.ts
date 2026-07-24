@@ -1,9 +1,10 @@
 import { ActionReq, ActionRes } from '../engine/Actions';
-import { CardPos, getCircuit, getMoxes } from '../engine/Card';
+import { CardPos, FieldPos, getCircuit, getMoxes } from '../engine/Card';
 import { MoxType, SigilParam, SigilParamType } from '../engine/constants';
 import { EffectTarget, EffectTriggers } from '../engine/Effects';
 import { ErrorType, FightError } from '../engine/Errors';
-import { cardCanPush, lists, positions } from '../engine/utils';
+import { FIGHT_SIDES } from '../engine/Fight';
+import { cardCanPush, lists, oppositeSide, positions } from '../engine/utils';
 import { entries, fromEntries } from '../utils';
 import { Buff } from './buffs';
 
@@ -190,6 +191,14 @@ const SIGIL_INFOS = {
         description: 'The creature opposing this card gains 1 [power|Power].',
         buffs: ['incrOppPower'],
     },
+    thick: {
+        // Thick：占两格。打出时检测相邻空格，召唤另一半并变身为主半。
+        // 对齐 Godot Thick.gd：右优先（slot+1 空→召唤 rightHalf 到 slot+1，自身变 leftHalf），
+        // 否则左（slot-1 空→召唤 leftHalf 到 slot-1，自身变 rightHalf）。
+        // 半卡是普通卡（无 Thick 符文），任一半死亡时另一半独立存活（Godot 无联动移除）。
+        name: 'Thick',
+        description: 'A card bearing this sigil is juicy, and takes up 2 spaces.',
+    },
     skeletonStrafe: {
         name: 'Skeleton Crew',
         description: 'At the end of the owner\'s turn, this card moves in the sigil\'s direction and plays a(n) {0} in the space behind it.',
@@ -312,6 +321,22 @@ const SIGIL_INFOS = {
         description: '[activate|Activate]: Pay {0} [energy|Energy] to deal {1} damage to the space across from this card.',
         params: ['number', 'number'],
     },
+    // Energy Gun (Eternal)：倾泻所有能量攻击对位卡，伤害=min(能量, 目标血量)。无 params（动态）。
+    activatedDealDamageEternal: {
+        name: 'Energy Gun (Eternal)',
+        description: '[activate|Activate]: Pay [energy|Energy] equal to the opposing creature\'s remaining [health|Health] (or your remaining energy, whichever is lower) to deal that much damage.',
+    },
+    // Energy Sniper：1 能量选目标 1 伤。用 snipe request 选目标。无 params（固定 1/1）。
+    activatedSnipeDamage: {
+        name: 'Energy Sniper',
+        description: '[activate|Activate]: Pay 1 [energy|Energy] to deal 1 damage to an opposing creature of your choice.',
+    },
+    // Marrow Sucker：付骨头回血。Godot 无脚本，按描述实现。params: [cost, healAmount]
+    activatedHealBones: {
+        name: 'Marrow Sucker',
+        description: '[activate|Activate]: Pay {0} [bones|Bones] to heal this card by {1}.',
+        params: ['number', 'number'],
+    },
 
     conduitGainEnergy: {
         name: 'Energy Conduit',
@@ -328,11 +353,45 @@ const SIGIL_INFOS = {
         description: 'If this card creates a [circuit], a(n) {0} is played in each empty space inside this card\'s circuit at the end of the owner\'s turn.',
         params: ['print'],
     },
+    // 真正的 Energy Conduit（能量不耗尽）：对齐 Godot no_energy_deplete。
+    // circuit 完成时，本侧 energySpend 事件被 cancel（不扣能量）。
+    conduitNoDeplete: {
+        name: 'Energy Conduit (No Deplete)',
+        description: 'If this card completes a [circuit], [energy|Energy] is not spent when playing cards.',
+    },
 
     // Custom
     vampiric: {
         name: 'Vampiric',
         description: 'When this card attacks another, it heals for the amount of damage dealt.',
+    },
+
+    // Acupuncture（主动+被动）：付 3 骨头给敌方加 Stitched；被攻击时伤害转移到 Stitched 卡。
+    // 对齐 Godot Acupuncture：Stitched 卡承受原始伤害，Acupuncture 卡只受 1 伤。
+    acupuncture: {
+        name: 'Acupuncture',
+        description: '[activate|Activate]: Pay 3 [bones|Bones] to choose a creature. That creature gains [sigil:stitched|Stitched]. When a card bearing this sigil is struck, a creature with Stitched takes the damage instead, and this card takes 1 damage.',
+    },
+    // Stitched：被 Acupuncture 附体的卡。Acupuncture 被打时，Stitched 卡承受伤害。
+    // 本身无效果处理——重定向逻辑在 Acupuncture.preSettleWrite.attack 中实现。
+    stitched: {
+        name: 'Stitched',
+        description: 'When a card bearing [sigil:acupuncture|Acupuncture] is struck, this card takes the damage instead.',
+    },
+
+    // Latch 系列（Phase 2）：死亡时让玩家 snipe 选目标，给目标附加符文。
+    // 对齐 Godot：目标可选场上任意卡（友/敌），Latch 卡自身 slot 已空不选。
+    bombLatch: {
+        name: 'Bomb Latch',
+        description: 'When this card perishes, choose a creature. That creature gains [sigil:detonator|Detonator].',
+    },
+    brittleLatch: {
+        name: 'Brittle Latch',
+        description: 'When this card perishes, choose a creature. That creature gains [sigil:brittle|Brittle].',
+    },
+    shieldLatch: {
+        name: 'Shield Latch',
+        description: 'When this card perishes, choose a creature. That creature gains [sigil:armored|Armored].',
     },
 } as const satisfies Record<string, SigilInfo>;
 
@@ -641,6 +700,41 @@ const SIGIL_EFFECTS = {
                     pos: this.fieldPos!,
                     card: this.initCard(evolution),
                 });
+            },
+        },
+    },
+    thick: {
+        // Thick：占两格。打出时召唤另一半到相邻空格，自身变身为主半。
+        // 对齐 Godot Thick.gd：右优先（slot+1 空→召唤 rightHalf，自身变 leftHalf），
+        // 否则左（slot-1 空→召唤 leftHalf，自身变 rightHalf）。两槽都被占则不触发。
+        runAs: 'played',
+        postSettle: {
+            play(event) {
+                const [side, lane] = event.pos;
+                const { leftHalf, rightHalf } = this.cardPrint;
+                if (!leftHalf || !rightHalf) return;
+
+                const field = this.tick.fight.field[side];
+                const lanes = this.tick.fight.opts.lanes;
+                if (lane + 1 < lanes && !field[lane + 1]) {
+                    this.createEvent('play', {
+                        pos: [side, lane + 1],
+                        card: this.initCard(rightHalf),
+                    });
+                    this.createEvent('transform', {
+                        pos: [side, lane],
+                        card: this.initCard(leftHalf),
+                    });
+                } else if (lane > 0 && !field[lane - 1]) {
+                    this.createEvent('play', {
+                        pos: [side, lane - 1],
+                        card: this.initCard(leftHalf),
+                    });
+                    this.createEvent('transform', {
+                        pos: [side, lane],
+                        card: this.initCard(rightHalf),
+                    });
+                }
             },
         },
     },
@@ -1003,8 +1097,10 @@ const SIGIL_EFFECTS = {
         },
     },
     dropRubyOnDeath: {
+        // 修正：原 postSettle.perish 在卡牌移除后无法触发（getActiveSigils 找不到已移除的卡）。
+        // 改为 preSettleRead.perish（卡牌仍在场时触发），与 frozen/fourBones 一致。
         runAs: 'played',
-        postSettle: {
+        preSettleRead: {
             perish() {
                 this.createEvent('play', {
                     pos: this.fieldPos!,
@@ -1180,6 +1276,59 @@ const SIGIL_EFFECTS = {
             },
         },
     },
+    // Energy Gun (Eternal)：倾泻能量直至目标死亡或能量耗尽。
+    // 伤害 = min(当前能量, 目标剩余血量)。无 params（动态计算）。
+    activatedDealDamageEternal: {
+        runAs: 'played',
+        preSettleRead: {
+            activate(event) {
+                const [side] = event.pos;
+                const targetPos = positions.opposing(event.pos);
+                const target = this.getCard(targetPos);
+                if (!target) throw FightError.create(ErrorType.InvalidPositionAccess, 'Energy Gun must attack a card.');
+                const energy = this.tick.fight.players[side].energy[0];
+                const dmg = Math.min(energy, target.state.health);
+                if (dmg < 1) throw FightError.create(ErrorType.InsufficientResources, 'Not enough energy.');
+                this.createEvent('energySpend', { side, amount: dmg });
+                this.createEvent('shoot', { from: event.pos, to: targetPos, damage: dmg });
+            },
+        },
+    },
+    // Energy Sniper：1 能量选目标 1 伤。用 snipe request 让玩家选目标。
+    activatedSnipeDamage: {
+        runAs: 'played',
+        requests: {
+            activate: {
+                callFor(event) {
+                    const [side] = event.pos;
+                    if (this.tick.fight.players[side].energy[0] < 1) return null;
+                    const enemySide = oppositeSide(side);
+                    const hasTarget = this.tick.fight.field[enemySide].some(c => c != null);
+                    if (!hasTarget) return null;
+                    return [side, { type: 'snipe' }];
+                },
+                async onResponse(event, res: ActionRes<'snipe'>) {
+                    const [side] = event.pos;
+                    const targetSide = oppositeSide(side);
+                    const target: FieldPos = [targetSide, res.lane];
+                    this.createEvent('energySpend', { side, amount: 1 });
+                    this.createEvent('shoot', { from: event.pos, to: target, damage: 1 });
+                },
+            },
+        },
+    },
+    // Marrow Sucker：付骨头回血。Godot 无脚本，按描述最小实现。
+    activatedHealBones: {
+        runAs: 'played',
+        preSettleRead: {
+            activate(event, [cost, healAmount]) {
+                const [side] = event.pos;
+                if (this.tick.fight.players[side].bones < cost) throw FightError.create(ErrorType.InsufficientResources, 'Not enough bones.');
+                this.createEvent('bones', { side, amount: -cost });
+                this.createEvent('heal', { pos: event.pos, amount: healAmount });
+            },
+        },
+    },
 
     conduitGainEnergy: {
         runAt: 'field',
@@ -1216,6 +1365,22 @@ const SIGIL_EFFECTS = {
             },
         },
     },
+    conduitNoDeplete: {
+        // Energy Conduit（能量不耗尽）：本卡在 circuit 中时，本侧 energySpend 事件被 cancel。
+        // 对齐 Godot no_energy_deplete：circuit 完成时打出卡牌不扣能量。
+        // runAt: 'field' + 无 runAs → 默认 global，对所有事件激活；
+        // 但仅定义了 preSettleWrite.energySpend，只会在 energySpend 事件时触发。
+        runAt: 'field',
+        preSettleWrite: {
+            energySpend(event) {
+                if (event.side !== this.side) return;
+                const [side, lane] = this.fieldPos!;
+                const circuit = getCircuit(this.prints, this.tick.fight.field[side]);
+                if (circuit[lane] == null) return; // 本卡不在 circuit 中
+                this.cancel();
+            },
+        },
+    },
 
     vampiric: {
         runAs: 'played',
@@ -1234,9 +1399,108 @@ const SIGIL_EFFECTS = {
             },
         },
     },
+
+    // Acupuncture：主动付 3 骨头给目标加 Stitched；被动被攻击时 Stitched 卡承受攻击者 power 的伤害。
+    // 对齐 Godot Stitched.gd + CardSlots.gd:838-853。
+    // 用 runAt:'field' + 手动目标过滤，解决主动(runAs:'played')与被动(runAs:'attackee')需不同 runAs 的问题。
+    acupuncture: {
+        runAt: 'field',
+        requests: {
+            activate: {
+                callFor(event) {
+                    if (!positions.isSameField(this.fieldPos!, event.pos)) return null;
+                    const [side] = event.pos;
+                    if (this.tick.fight.players[side].bones < 3) return null;
+                    const [mySide, myLane] = event.pos;
+                    const hasTarget = FIGHT_SIDES.some(s =>
+                        this.tick.fight.field[s].some((c, lane) =>
+                            c != null && !(s === mySide && lane === myLane)));
+                    if (!hasTarget) return null;
+                    return [side, { type: 'snipe' }];
+                },
+                async onResponse(event, res: ActionRes<'snipe'>) {
+                    const [side] = event.pos;
+                    const targetSide = res.side ?? side;
+                    const target: FieldPos = [targetSide, res.lane];
+                    if (positions.isSameField(target, event.pos)) return;
+                    this.createEvent('bones', { side, amount: -3 });
+                    this.createEvent('newSigil', {
+                        pos: ['field', target],
+                        sigil: 'stitched' as Sigil,
+                    });
+                },
+            },
+        },
+        preSettleWrite: {
+            attack(event) {
+                // 仅当本卡是被攻击者时触发
+                if (!positions.isSameField(this.fieldPos!, event.to)) return;
+                // 找场上第一张 Stitched 卡，让它承受攻击者 power 的伤害
+                for (const side of FIGHT_SIDES) {
+                    for (let lane = 0; lane < this.tick.fight.opts.lanes; lane++) {
+                        const card = this.tick.fight.field[side][lane];
+                        if (card?.state.sigils.includes('stitched')) {
+                            const dmg = this.getPower(event.from) ?? 0;
+                            if (dmg < 1) return;
+                            this.createEvent('shoot', {
+                                from: event.from,
+                                to: [side, lane],
+                                damage: dmg,
+                            });
+                            return;
+                        }
+                    }
+                }
+            },
+        },
+    },
+    // Stitched：纯标记符文，重定向逻辑在 Acupuncture.preSettleWrite.attack 中实现。
+    stitched: {},
+
+    // Latch 系列：死亡时 snipe 选目标，给目标附加指定符文。
+    // 对齐 Godot：目标可选场上任意卡（友/敌）。Latch 卡自身 slot 已空（perish 已 settle）。
+    // requests 在 preSettle 阶段收集（卡牌仍在场），onResponse 在 handleResponse 中调用。
+    bombLatch: latchEffect('detonator'),
+    brittleLatch: latchEffect('brittle'),
+    shieldLatch: latchEffect('armored'),
 } satisfies {
     [S in Sigil]?: SigilEffects<S>;
 };
+
+/**
+ * Latch 系列共用工厂：死亡时请求 snipe，选中目标后赋予指定 sigil。
+ * 对齐 Godot Bomb/Brittle/Shield Latch.gd。
+ */
+function latchEffect(grantSigil: Sigil): SigilEffects<'bombLatch' | 'brittleLatch' | 'shieldLatch'> {
+    return {
+        runAs: 'played',
+        requests: {
+            perish: {
+                callFor(event) {
+                    // 场上无其他卡（排除自身）则不触发。
+                    // preSettle 阶段 Latch 卡仍在场，必须排除自身 position。
+                    const [mySide, myLane] = event.pos;
+                    const hasTarget = FIGHT_SIDES.some(side =>
+                        this.tick.fight.field[side].some((c, lane) =>
+                            c != null && !(side === mySide && lane === myLane)));
+                    if (!hasTarget) return null;
+                    return [this.side, { type: 'snipe' }];
+                },
+                async onResponse(event, res: ActionRes<'snipe'>) {
+                    const latcherSide = event.pos[0];
+                    const targetSide = res.side ?? oppositeSide(latcherSide);
+                    const target: FieldPos = [targetSide, res.lane];
+                    // 不选自身 slot（已死，但防御性检查）
+                    if (positions.isSameField(target, event.pos)) return;
+                    this.createEvent('newSigil', {
+                        pos: ['field', target],
+                        sigil: grantSigil,
+                    });
+                },
+            },
+        },
+    };
+}
 
 export const sigilInfos: Record<string, SigilInfo> = SIGIL_INFOS;
 export const sigils: Record<string, SigilDef> = fromEntries(entries(SIGIL_INFOS).map<[Sigil, SigilDef]>(([id, info]) => [id, { ...info, ...(SIGIL_EFFECTS as Record<string, SigilEffects>)[id] }]));
