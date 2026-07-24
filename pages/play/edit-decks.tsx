@@ -1,7 +1,7 @@
 import styles from './edit-decks.module.css';
 import { rulesets } from '@/lib/defs/prints';
 import { entries } from '@/lib/utils';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isCardsDirty, useDeckSync } from '@/hooks/useDeckStore';
 import { PrintList } from '@/components/ui/PrintList';
 import { AssetButton } from '@/components/inputs/AssetButton';
@@ -11,6 +11,7 @@ import { Button } from '@/components/inputs/Button';
 import { getSideDeckPrintIds } from '@/lib/engine/Card';
 import { Box } from '@/components/ui/Box';
 import { DeckCards } from '@/lib/engine/Deck';
+import { defaultFightOptions } from '@/lib/online/z';
 
 function useDeck(init: DeckCards) {
     const [deck, setDeck] = useState(init);
@@ -18,6 +19,52 @@ function useDeck(init: DeckCards) {
     const removeCard = (idx: number) => setDeck(deck => ({ ...deck, main: deck.main.filter((_, i) => i !== idx) }));
     const setSide = (ids: string[]) => setDeck(deck => ({ ...deck, side: ids }));
     return [deck, { addCard, removeCard, setSide, setDeck }] as const;
+}
+
+/**
+ * 牌组合法性校验（对齐 Godot DeckEdit.gd）。
+ * - 主牌组卡数 >= opts.deckSizeMin
+ * - rare 卡主牌组限 1 张（enforced rare）
+ * - 非 rare 卡主牌组每张上限 opts.maxCommonsMain
+ * - 非 rare 卡副牌组每张上限 opts.maxCommonsSide
+ * noHammer 是服务端锤子守卫（Tick.ts），UI 端不校验，仅在卡牌渲染时显示标记（待办）。
+ */
+function validateDeck(deck: DeckCards, rulesetId: string): { isValid: boolean; errors: string[] } {
+    const prints = rulesets[rulesetId].prints;
+    const opts = defaultFightOptions(rulesetId);
+    const errors: string[] = [];
+
+    if (deck.main.length < opts.deckSizeMin) {
+        errors.push(`主牌组至少需要 ${opts.deckSizeMin} 张卡（当前 ${deck.main.length} 张）`);
+    }
+
+    const countIds = (ids: string[]) => {
+        const counts: Record<string, number> = {};
+        for (const id of ids) counts[id] = (counts[id] ?? 0) + 1;
+        return counts;
+    };
+
+    const mainCounts = countIds(deck.main);
+    for (const [id, count] of Object.entries(mainCounts)) {
+        const print = prints[id];
+        if (!print) continue;
+        if (print.rare) {
+            if (count > 1) errors.push(`${print.name}（稀有）最多 1 张（当前 ${count} 张）`);
+        } else if (count > opts.maxCommonsMain) {
+            errors.push(`${print.name} 最多 ${opts.maxCommonsMain} 张（当前 ${count} 张）`);
+        }
+    }
+
+    const sideCounts = countIds(deck.side);
+    for (const [id, count] of Object.entries(sideCounts)) {
+        const print = prints[id];
+        if (!print) continue;
+        if (!print.rare && count > opts.maxCommonsSide) {
+            errors.push(`副牌组 ${print.name} 最多 ${opts.maxCommonsSide} 张（当前 ${count} 张）`);
+        }
+    }
+
+    return { isValid: errors.length === 0, errors };
 }
 
 export default function EditDecks() {
@@ -52,6 +99,10 @@ export default function EditDecks() {
     }
 
     const canMakeNew = !isDirty;
+
+    // 牌组合法性校验（deckSizeMin / rare 限 1 / commons 上限）。非法时阻止保存。
+    const validation = useMemo(() => validateDeck(deck, selectedRuleset), [deck, selectedRuleset]);
+    const canSave = isDirty && validation.isValid;
 
     useEffect(() => {
         function onBeforeUnload(event: BeforeUnloadEvent) {
@@ -179,7 +230,7 @@ export default function EditDecks() {
                 <div className={styles.controlsRow}>
                     <div className={styles.actions}>
                         <AssetButton path="/assets/plus.png" title="Create New Deck" disabled={!canMakeNew} onClick={() => onCreateDeck()} />
-                        <AssetButton path="/assets/disk.png" title="Save Deck" disabled={!isDirty || isSaving} onClick={() => onSaveDeck()} />
+                        <AssetButton path="/assets/disk.png" title="Save Deck" disabled={!canSave || isSaving} onClick={() => onSaveDeck()} />
                         <AssetButton path="/assets/trash.png" title="Delete Deck" disabled={!hasDeckSelected || isDeleting} onClick={() => onDeleteDeck(selectedDeckId!)} />
                         <AssetButton
                             // disabled={!isDirty || isSaving}
@@ -192,6 +243,13 @@ export default function EditDecks() {
                     <div style={{ flex:1 }} />
                     <Text size={14}>{`${deck.main.length}`} card{deck.main.length === 1 ? '' : 's'}</Text>
                 </div>
+                {validation.errors.length > 0 && (
+                    <div className={styles.validationErrors}>
+                        {validation.errors.map((err, i) => (
+                            <Text key={i} size={12} className={styles.validationError}>{err}</Text>
+                        ))}
+                    </div>
+                )}
             </Box>
             <div className={styles.deck}>
                 {!deck.main.length && <div className={styles.emptyDeck}>

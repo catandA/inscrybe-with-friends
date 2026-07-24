@@ -6,7 +6,8 @@
  * 触发事件由调用方显式给出，保证完全确定。
  */
 import { createFightHost, createTick } from '@/lib/engine/Host';
-import { handleEvents, FightPacket } from '@/lib/engine/Tick';
+import { handleAction, handleEvents, FightPacket } from '@/lib/engine/Tick';
+import { Action } from '@/lib/engine/Actions';
 import { Event } from '@/lib/engine/Events';
 import { Fight, FightSide, Phase } from '@/lib/engine/Fight';
 import { Rng } from '@/lib/engine/Rng';
@@ -44,6 +45,28 @@ export async function runEvents(
         adapter: { async initDeck() { return [] as number[]; } },
     });
     const packet = await handleEvents(tick, events);
+    return { fight: tick.fight, packet };
+}
+
+/**
+ * 用 handleAction 推送一个动作并结算。
+ * 适合测试 handleAction 中的校验逻辑（如 noHammer、cost 校验）。
+ */
+export async function runAction(
+    setup: (fight: Fight<FightSide>) => void,
+    side: FightSide,
+    action: Action,
+    opts: RunOpts = {},
+): Promise<RunResult> {
+    const fight = makeMinimalFight();
+    fight.turn = opts.turn ?? { side: 'player', phase: 'play' };
+    setup(fight);
+    const host = createFightHost(fight, opts.seed ?? 'sigil-test-seed');
+    const tick = createTick(host, {
+        rng: Rng.resume(host.rngState),
+        adapter: { async initDeck() { return [] as number[]; } },
+    });
+    const packet = await handleAction(tick, side, action);
     return { fight: tick.fight, packet };
 }
 

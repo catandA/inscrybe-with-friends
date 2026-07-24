@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { Event } from '../engine/Events';
 import { initCardFromPrint } from '../engine/Card';
 import { PRINTS, placeCard } from '../engine/__testutils__/fight';
-import { runEvents, firstEvent } from './__testutils__/runTick';
+import { runEvents, runAction, firstEvent } from './__testutils__/runTick';
+import { ErrorType } from '../engine/Errors';
 
 /**
  * 符文行为快照测试。
@@ -34,8 +35,8 @@ describe('符文行为快照', () => {
         });
     });
 
-    describe('drawCopy (Fecundity, 当前=Kaycee 行为)', () => {
-        it('打出后复制一张到手牌，复制体不带 drawCopy', async () => {
+    describe('drawCopy (Fecundity, 普通=保留符文)', () => {
+        it('打出后复制一张到手牌，复制体保留 drawCopy（可无限增殖）', async () => {
             const { fight, packet } = await runEvents(
                 () => {},
                 [{
@@ -55,9 +56,38 @@ describe('符文行为快照', () => {
             expect(fight.hands.player).toHaveLength(1);
             const copy = fight.hands.player[0];
             expect(copy.print).toBe('fieldMice');
-            // 锁住当前 Kaycee 行为：复制体去掉了 drawCopy（sigils.ts:515）
-            // Phase 2 拆分普通 Fecundity 时此断言需更新
-            expect(copy.state.sigils).not.toContain('drawCopy');
+            // 普通 Fecundity：复制体保留 drawCopy（对齐 Godot Fecundity.gd）
+            expect(copy.state.sigils).toContain('drawCopy');
+        });
+    });
+
+    describe('drawCopyKaycee (Fecundity Kaycee, 一次性)', () => {
+        it('打出后复制一张到手牌，复制体去掉 drawCopyKaycee', async () => {
+            const { fight, packet } = await runEvents(
+                () => {},
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: (() => {
+                        // fieldMice 原本是 drawCopy；这里手动换成 drawCopyKaycee 测试 Kaycee 行为
+                        const c = initCardFromPrint(PRINTS, 'fieldMice');
+                        c.state.sigils = ['drawCopyKaycee'];
+                        return c;
+                    })(),
+                } as Event],
+            );
+
+            const types = packet.settled.map(e => e.type);
+            expect(types).toContain('play');
+            expect(types).toContain('draw');
+
+            // 原卡上场，仍带 drawCopyKaycee
+            expect(fight.field.player[0]?.state.sigils).toContain('drawCopyKaycee');
+            // 复制体入手牌
+            expect(fight.hands.player).toHaveLength(1);
+            const copy = fight.hands.player[0];
+            // Kaycee 变体：复制体去掉 drawCopyKaycee（一次性）
+            expect(copy.state.sigils).not.toContain('drawCopyKaycee');
         });
     });
 
@@ -274,6 +304,158 @@ describe('符文行为快照', () => {
             );
             // 无 nerf，moxes power=2 正常造成 2 伤
             expect(fight.field.opposing[0]?.state.health).toBe(8); // 10 - 2
+        });
+    });
+
+    describe('noHammer（锤子守卫）', () => {
+        // 临时给 adder 加 noHammer 测试守卫；afterEach 恢复，避免污染其他测试。
+        afterEach(() => { delete (PRINTS.adder as { noHammer?: boolean }).noHammer; });
+
+        it('带 noHammer 的卡锤不掉：抛 InvalidAction', async () => {
+            (PRINTS.adder as { noHammer?: boolean }).noHammer = true;
+            await expect(
+                runAction(
+                    (fight) => { placeCard(fight, 'player', 0, 'adder'); },
+                    'player',
+                    { type: 'hammer', lane: 0 },
+                ),
+            ).rejects.toMatchObject({ type: ErrorType.InvalidAction });
+        });
+
+        it('不带 noHammer 的卡正常被锤：发出 perish 事件', async () => {
+            const { packet } = await runAction(
+                (fight) => { placeCard(fight, 'player', 0, 'adder'); },
+                'player',
+                { type: 'hammer', lane: 0 },
+            );
+            expect(packet.settled.some(e => e.type === 'perish')).toBe(true);
+        });
+    });
+
+    describe('bloodLust (Blood Lust)', () => {
+        it('攻击致死目标：攻击者 power +1', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const attacker = placeCard(fight, 'player', 0, 'adder'); // power 2
+                    attacker.state.sigils = ['bloodLust'];
+                    const target = placeCard(fight, 'opposing', 0, 'adder'); // health 2
+                    target.state.sigils = [];
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
+            );
+
+            // target 被击杀后 perish，field 已清空
+            expect(fight.field.opposing[0]).toBeNull();
+            expect(packet.settled.some(e => e.type === 'perish')).toBe(true);
+            // stats 事件触发，攻击者 power +1 = 3
+            expect(packet.settled.some(e => e.type === 'stats')).toBe(true);
+            expect(fight.field.player[0]?.state.power).toBe(3);
+        });
+
+        it('攻击未致死：攻击者 power 不变', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const attacker = placeCard(fight, 'player', 0, 'adder'); // power 2
+                    attacker.state.sigils = ['bloodLust'];
+                    const target = placeCard(fight, 'opposing', 0, 'adder');
+                    target.state.sigils = [];
+                    target.state.health = 5; // 不会被击杀
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
+            );
+
+            // target 未死（5 - 2 = 3）
+            expect(fight.field.opposing[0]?.state.health).toBe(3);
+            // 不触发 stats 事件
+            expect(packet.settled.some(e => e.type === 'stats')).toBe(false);
+            expect(fight.field.player[0]?.state.power).toBe(2);
+        });
+
+        it('direct attack（直接攻击对手）：不触发 bloodLust', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const attacker = placeCard(fight, 'player', 0, 'adder');
+                    attacker.state.sigils = ['bloodLust'];
+                    // opposing 0 无卡，attack 会 direct
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0], direct: true } as Event],
+            );
+
+            expect(packet.settled.some(e => e.type === 'stats')).toBe(false);
+            expect(fight.field.player[0]?.state.power).toBe(2);
+        });
+    });
+
+    describe('omniStrike (Omni Strike)', () => {
+        it('对所有敌方卡各打一次（3 个目标）', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const attacker = placeCard(fight, 'player', 0, 'adder'); // power 2
+                    attacker.state.sigils = ['omniStrike'];
+                    attacker.state.power = 5; // 确保一击杀
+                    // 三个敌方卡，health 10，不会被一击杀以便检查伤害
+                    const t0 = placeCard(fight, 'opposing', 0, 'adder');
+                    t0.state.sigils = []; t0.state.health = 10;
+                    const t1 = placeCard(fight, 'opposing', 1, 'adder');
+                    t1.state.sigils = []; t1.state.health = 10;
+                    const t2 = placeCard(fight, 'opposing', 2, 'adder');
+                    t2.state.sigils = []; t2.state.health = 10;
+                },
+                [{ type: 'triggerAttack', pos: ['player', 0] } as Event],
+            );
+
+            // 应有 3 个 attack 事件（每个敌方卡各 1 次）
+            const attacks = packet.settled.filter(e => e.type === 'attack');
+            expect(attacks).toHaveLength(3);
+
+            // 三个目标各受 5 伤（10 - 5 = 5）
+            expect(fight.field.opposing[0]?.state.health).toBe(5);
+            expect(fight.field.opposing[1]?.state.health).toBe(5);
+            expect(fight.field.opposing[2]?.state.health).toBe(5);
+        });
+
+        it('无敌方卡时回落到默认攻击对位（直接打脸）', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const attacker = placeCard(fight, 'player', 0, 'adder');
+                    attacker.state.sigils = ['omniStrike'];
+                    attacker.state.power = 3;
+                    // 不放任何敌方卡
+                },
+                [{ type: 'triggerAttack', pos: ['player', 0] } as Event],
+            );
+
+            // 只应有 1 个 attack 事件（对位，无目标 → direct）
+            const attacks = packet.settled.filter(e => e.type === 'attack');
+            expect(attacks).toHaveLength(1);
+            // direct attack 加分：player 得 3 分
+            expect(fight.points.player).toBe(3);
+        });
+
+        it('与 Repulsive 交互：被拒目标不受伤，其他目标正常受伤', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const attacker = placeCard(fight, 'player', 0, 'adder');
+                    attacker.state.sigils = ['omniStrike'];
+                    attacker.state.power = 5;
+                    // lane 0：Repulsive（voidDamage），attack 应被 cancel
+                    const t0 = placeCard(fight, 'opposing', 0, 'adder');
+                    t0.state.sigils = ['voidDamage']; t0.state.health = 10;
+                    // lane 1：普通卡，应受伤
+                    const t1 = placeCard(fight, 'opposing', 1, 'adder');
+                    t1.state.sigils = []; t1.state.health = 10;
+                },
+                [{ type: 'triggerAttack', pos: ['player', 0] } as Event],
+            );
+
+            // 2 个 attack 事件生成，但 lane 0 的被 voidDamage cancel（不入 settled）
+            const attacks = packet.settled.filter(e => e.type === 'attack');
+            expect(attacks).toHaveLength(1); // 只有 lane 1 的成功
+
+            // lane 0 未受伤（attack 被 cancel）
+            expect(fight.field.opposing[0]?.state.health).toBe(10);
+            // lane 1 受 5 伤
+            expect(fight.field.opposing[1]?.state.health).toBe(5);
         });
     });
 });

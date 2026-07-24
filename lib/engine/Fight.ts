@@ -35,6 +35,13 @@ export interface FightOptions {
     deckSizeMin: number;
     /** 对齐 Godot variable_attack_nerf；true 时动态 power（string）卡伤害削为 1。 */
     variableAttackNerf: boolean;
+    // Godot default_header 对齐字段（Phase 1 第三批新增）
+    /** 对齐 Godot max_commons_main；主牌组每张 common 卡上限。牌组校验待任务 5 接入。 */
+    maxCommonsMain: number;
+    /** 对齐 Godot max_commons_side；副牌组每张 common 卡上限。 */
+    maxCommonsSide: number;
+    /** 对齐 Godot opt_actives；true 时主动技能可选触发。机制待 Phase 2 实现，先占位。 */
+    optActives: boolean;
 }
 
 export interface Fight<InclSide extends FightSide = never> {

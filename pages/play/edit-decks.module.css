@@ -33,6 +33,17 @@
     gap: 4em;
 }
 
+.validationErrors {
+    display: flex;
+    flex-direction: column;
+    gap: 2em;
+    padding: 4em 8em 0;
+}
+
+.validationError {
+    color: #ff6b6b;
+}
+
 .deck {
     grid-area: deck;
 

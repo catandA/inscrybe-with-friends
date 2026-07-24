@@ -59,6 +59,10 @@ const SIGIL_INFOS = {
         description: 'At the end of the owner\'s turn, this card generates {0} [bones|Bone].',
         params: ['number'],
     },
+    bloodLust: {
+        name: 'Blood Lust',
+        description: 'When this card kills another creature, it gains 1 [power|Power].',
+    },
     boneless: {
         name: 'Boneless',
         description: 'When a card bearing this sigil dies, no [bones] are awarded.',
@@ -104,6 +108,12 @@ const SIGIL_INFOS = {
     drawCopy: {
         name: 'Fecundity',
         description: 'When this card is played, a copy of it enters your hand.',
+    },
+    drawCopyKaycee: {
+        // Kaycee 变体：复制体去掉 drawCopyKaycee（一次性）。
+        // 普通 Fecundity（drawCopy）复制体保留符文，可无限增殖。
+        name: 'Fecundity (Kaycee)',
+        description: 'When this card is played, a copy of it without this sigil enters your hand.',
     },
     drawRabbit: {
         name: 'Rabbit Hole',
@@ -209,6 +219,10 @@ const SIGIL_INFOS = {
     bistrike: {
         name: 'Bifurcated Strike',
         description: 'This card will strike each opposing space to the left and right of the spaces across it.',
+    },
+    omniStrike: {
+        name: 'Omni Strike',
+        description: 'This card will strike every enemy creature on the board.',
     },
     unkillable: {
         name: 'Unkillable',
@@ -394,6 +408,27 @@ const SIGIL_EFFECTS = {
             },
         },
     },
+    bloodLust: {
+        // Blood Lust：持有者（攻击者）击杀目标时自身 +1 power。
+        // runAs: 'played'（attack 事件中 targets.played = 攻击者位置）。
+        // 注：用户原始描述 runAs: 'attackee' 是笔误——attackee 是被打的卡（target），
+        // 而 Blood Lust 持有者是击杀方（攻击者），故用 'played'。
+        // 仅在 state.power 为 number 时触发；动态 power（ants/hand/bells/moxes/mirror）不触发，避免覆盖 SpecialStat。
+        // deathTouch 致死时 target.health 可能非 0，此场景的交互留待后续。
+        runAs: 'played',
+        postSettle: {
+            attack(event) {
+                if (event.direct) return; // 直接攻击对手无目标卡，不触发
+                const target = this.getCardState(event.to);
+                if (!target || target.health !== 0) return; // 目标未死
+                if (typeof this.card.state.power !== 'number') return; // 动态 power 卡不触发
+                this.createEvent('stats', {
+                    pos: this.fieldPos!,
+                    power: this.card.state.power + 1,
+                });
+            },
+        },
+    },
     brittle: {
         runAs: 'played',
         preSettleRead: {
@@ -521,11 +556,26 @@ const SIGIL_EFFECTS = {
         },
     },
     drawCopy: {
+        // 普通 Fecundity：复制体保留 drawCopy（可无限增殖）。对齐 Godot Fecundity.gd。
         runAs: 'played',
         postSettle: {
             play() {
                 const card = this.initCard(this.card.print);
-                card.state.sigils = lists.subtract(this.card.state.sigils, ['drawCopy']);
+                card.state.sigils = [...this.card.state.sigils];
+                this.createEvent('draw', {
+                    side: this.side,
+                    card,
+                });
+            },
+        },
+    },
+    drawCopyKaycee: {
+        // Kaycee 变体：复制体去掉 drawCopyKaycee（一次性）。对齐 Godot Fecundity (Kaycee).gd。
+        runAs: 'played',
+        postSettle: {
+            play() {
+                const card = this.initCard(this.card.print);
+                card.state.sigils = lists.subtract(this.card.state.sigils, ['drawCopyKaycee']);
                 this.createEvent('draw', {
                     side: this.side,
                     card,
@@ -804,6 +854,31 @@ const SIGIL_EFFECTS = {
                 this.createEvent('attack', { from: event.pos, to: [side, lane - 1] });
                 this.createEvent('attack', { from: event.pos, to: [side, lane] });
                 this.createEvent('attack', { from: event.pos, to: [side, lane + 1] });
+            },
+        },
+    },
+    omniStrike: {
+        // Godot OmniStrike.gd：modify_attack_targeting 把默认攻击替换为对所有敌方卡各打一次。
+        // 无敌方卡时回落到默认（打对位，可能直接打脸）。
+        // 与 Repulsive/Brittle 的交互：每个目标独立生成 attack 事件，
+        // 被 voidDamage cancel 的不触发 Brittle，未 cancel 的正常触发（对齐 Godot has_attacked 语义）。
+        runAs: 'played',
+        preSettleWrite: {
+            triggerAttack(event) {
+                this.cancelDefault();
+                const [enemySide] = positions.opposing(event.pos);
+                const enemyField = this.tick.fight.field[enemySide];
+                let attacked = false;
+                for (let lane = 0; lane < enemyField.length; lane++) {
+                    if (enemyField[lane] != null) {
+                        this.createEvent('attack', { from: event.pos, to: [enemySide, lane] });
+                        attacked = true;
+                    }
+                }
+                if (!attacked) {
+                    const [opSide, opLane] = positions.opposing(event.pos);
+                    this.createEvent('attack', { from: event.pos, to: [opSide, opLane] });
+                }
             },
         },
     },

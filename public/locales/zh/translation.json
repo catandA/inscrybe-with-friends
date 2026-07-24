@@ -1,0 +1,14 @@
+{
+    "common": {
+        "loading": "加载中..."
+    },
+    "notFound": {
+        "title": "404",
+        "message": "页面未找到"
+    },
+    "play": {
+        "lobbies": "大厅",
+        "createLobby": "创建大厅",
+        "editDecks": "编辑牌组"
+    }
+}

@@ -169,6 +169,8 @@ export async function handleAction(tick: FightTick, side: FightSide, action: Act
             if (tick.fight.mustPlay[side] != null) throw FightError.create(ErrorType.InvalidAction, 'You must play your card');
             const card = tick.fight.field[side][action.lane];
             if (card == null) throw FightError.create(ErrorType.InvalidAction, 'You cannot hammer a lane that is empty');
+            // noHammer（Godot nohammer）：免疫锤子。CardPrint.noHammer 字段已就位（Phase 1 第二批）。
+            if (prints[card.print].noHammer) throw FightError.create(ErrorType.InvalidAction, 'This card cannot be hammered');
             stack.push({ type: 'perish', pos: [side, action.lane], cause: 'hammer' });
             break;
         }

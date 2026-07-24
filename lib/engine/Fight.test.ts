@@ -61,3 +61,23 @@ describe('startingBones', () => {
         expect(fight.players.opposing.bones).toBe(3);
     });
 });
+
+describe('Phase 1 第三批 FightOptions 字段', () => {
+    it('默认 maxCommonsMain=4 / maxCommonsSide=10 / optActives=false（对齐 Godot default_header）', () => {
+        const fight = makeMinimalFight();
+        expect(fight.opts.maxCommonsMain).toBe(4);
+        expect(fight.opts.maxCommonsSide).toBe(10);
+        expect(fight.opts.optActives).toBe(false);
+    });
+
+    it('自定义 maxCommonsMain/maxCommonsSide/optActives 可覆盖默认值', () => {
+        const fight = makeMinimalFight({
+            maxCommonsMain: 6,
+            maxCommonsSide: 15,
+            optActives: true,
+        });
+        expect(fight.opts.maxCommonsMain).toBe(6);
+        expect(fight.opts.maxCommonsSide).toBe(15);
+        expect(fight.opts.optActives).toBe(true);
+    });
+});

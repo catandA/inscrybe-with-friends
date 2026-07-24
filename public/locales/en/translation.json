@@ -1,0 +1,14 @@
+{
+    "common": {
+        "loading": "Loading..."
+    },
+    "notFound": {
+        "title": "404",
+        "message": "Page not found"
+    },
+    "play": {
+        "lobbies": "Lobbies",
+        "createLobby": "Create Lobby",
+        "editDecks": "Edit Decks"
+    }
+}

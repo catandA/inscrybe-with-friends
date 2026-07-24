@@ -119,6 +119,9 @@ function PlayTestPage() {
             startingBones: 0,
             deckSizeMin: 1,
             variableAttackNerf: false,
+            maxCommonsMain: 4,
+            maxCommonsSide: 10,
+            optActives: false,
         }, FIGHT_SIDES, decks);
         const host = createFightHost(fight);
 

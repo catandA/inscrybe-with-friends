@@ -5,8 +5,10 @@ import { Box } from '@/components/ui/Box';
 import { Text } from '@/components/ui/Text';
 import { trpc } from '@/lib/trpc';
 import { useRouter } from 'next/router';
+import { useTranslation } from 'react-i18next';
 
 export default function Play() {
+    const { t } = useTranslation();
     const router = useRouter();
     const playerships = trpc.lobbies.getOwnPlayerships.useQuery(void 0, {
         refetchOnWindowFocus: false,
@@ -25,7 +27,7 @@ export default function Play() {
 
     return <div className={styles.playMenu}>
         <Box className={styles.lobbies}>
-            <Text size={12}>Lobbies</Text>
+            <Text size={12}>{t('play.lobbies')}</Text>
             <div className={classNames(styles.lobbiesInner, {
                 [styles.fetching]: playerships.isFetching,
             })}>
@@ -37,10 +39,10 @@ export default function Play() {
                     </div>
                 ))}
                 {playerships.isFetching && !playerships.data?.length && (
-                    <Text>Loading...</Text>
+                    <Text>{t('common.loading')}</Text>
                 )}
                 <Button onClick={onCreateLobby} disabled={createLobby.isPending} className={styles.newLobby}>
-                    <Text>Create Lobby</Text>
+                    <Text>{t('play.createLobby')}</Text>
                 </Button>
                 {createLobby.error && <div className={styles.error}>
                     <Text size={8}>{createLobby.error.message}</Text>
@@ -49,7 +51,7 @@ export default function Play() {
         </Box>
         <Box>
             <Button onClick={() => router.push('/play/edit-decks')}>
-                <Text>Edit Decks</Text>
+                <Text>{t('play.editDecks')}</Text>
             </Button>
         </Box>
     </div>;

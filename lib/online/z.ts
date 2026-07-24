@@ -24,6 +24,9 @@ export const zFightOptions = z.object({
     startingBones: z.number(),
     deckSizeMin: z.number(),
     variableAttackNerf: z.boolean(),
+    maxCommonsMain: z.number(),
+    maxCommonsSide: z.number(),
+    optActives: z.boolean(),
 }) satisfies z.ZodType<FightOptions>;
 
 export const defaultFightOptions = (ruleset = 'imfComp'): FightOptions => ({
@@ -40,6 +43,9 @@ export const defaultFightOptions = (ruleset = 'imfComp'): FightOptions => ({
     startingBones: 0,
     deckSizeMin: 1,
     variableAttackNerf: false,
+    maxCommonsMain: 4,
+    maxCommonsSide: 10,
+    optActives: false,
 });
 
 export const zDeckCards = z.object({

@@ -1,4 +1,5 @@
 import '@/styles/globals.css';
+import '@/lib/i18n';
 import Filters from '@/components/Filters';
 import styles from './app.module.css';
 import { SessionProvider, signIn } from 'next-auth/react';
