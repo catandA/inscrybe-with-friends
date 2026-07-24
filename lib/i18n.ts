@@ -22,7 +22,13 @@ export const LANGUAGE_LABELS: Record<Language, string> = {
 
 const STORAGE_KEY = 'i18nLng';
 
-function detectInitialLanguage(): Language {
+/**
+ * 检测用户偏好语言（存储值优先，否则浏览器语言）。
+ * 仅供客户端在 mount 后调用（见 `syncLanguageAfterMount`），不能用于 i18n 初始化——
+ * 初始化时若在浏览器端立即读取 localStorage/navigator.language，会导致客户端首次渲染
+ * （hydration 阶段）与服务端渲染的语言不一致，触发 React hydration mismatch。
+ */
+function detectPreferredLanguage(): Language {
     if (typeof window === 'undefined') return 'en';
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored === 'en' || stored === 'zh') return stored;
@@ -35,15 +41,28 @@ i18n.use(initReactI18next).init({
         en: { translation: en },
         zh: { translation: zh },
     },
-    lng: detectInitialLanguage(),
+    // 服务端与客户端首次渲染必须使用相同的初始语言，否则会 hydration mismatch；
+    // 真实语言偏好在 mount 后由 `syncLanguageAfterMount` 应用。
+    lng: 'en',
     fallbackLng: 'en',
     interpolation: { escapeValue: false },
     returnEmptyString: false,
 });
 
 /**
+ * 在客户端 mount 后（hydration 完成后）同步真实语言偏好。
+ * 应在 useEffect 中调用一次；此时切换语言只是普通的 React 更新，不会与 SSR 树比对。
+ */
+export function syncLanguageAfterMount(): void {
+    const preferred = detectPreferredLanguage();
+    if (preferred !== i18n.language) {
+        i18n.changeLanguage(preferred);
+    }
+}
+
+/**
  * 切换语言并持久化到 localStorage。
- * 在客户端调用；SSR 期间 i18n 使用 detectInitialLanguage 的默认值（'en'）。
+ * 在客户端调用；SSR 期间 i18n 固定使用初始语言（'en'）。
  */
 export function changeLanguage(lng: Language): void {
     i18n.changeLanguage(lng);

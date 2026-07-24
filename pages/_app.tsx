@@ -1,5 +1,5 @@
 import '@/styles/globals.css';
-import '@/lib/i18n';
+import { syncLanguageAfterMount } from '@/lib/i18n';
 import Filters from '@/components/Filters';
 import styles from './app.module.css';
 import { SessionProvider, signIn } from 'next-auth/react';
@@ -17,6 +17,11 @@ import { applyTheme, type Theme } from '@/lib/themes';
 const App: AppType<{ session: any }> = ({ Component, pageProps, ...appProps }) => {
     const version = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'dev';
     const isPlayPath = /^\/play(?:\/|$)/.test(appProps.router.pathname);
+
+    // hydration 完成后再应用真实语言偏好，避免与 SSR 首次渲染（固定为 en）不一致
+    useEffect(() => {
+        syncLanguageAfterMount();
+    }, []);
 
     // Phase 3.3 主题系统：加载用户保存的主题（hooks 必须在顶层调用，不能放在条件块内）
     const { data: user } = trpc.user.getUser.useQuery(void 0, {

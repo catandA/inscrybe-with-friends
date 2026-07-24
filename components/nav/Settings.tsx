@@ -124,11 +124,12 @@ function ThemeSetting() {
  */
 function LanguageSetting() {
     const { t } = useTranslation();
-    const [current, setCurrent] = useState<Language>(getCurrentLanguage());
+    // 不用 useState 缓存：useTranslation 已在语言切换时触发重渲染，
+    // 直接读取可避免与外部触发的语言变化（如 syncLanguageAfterMount）不同步。
+    const current = getCurrentLanguage();
 
     const onPick = (lng: Language) => {
         changeLanguage(lng);
-        setCurrent(lng);
     };
 
     return <div className={styles.group}>
