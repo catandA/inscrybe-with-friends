@@ -21,6 +21,8 @@ type ActionMap = {
     play: { card: number; lane: number; sacs?: number[] };
 
     activate: { lane: number; sigil: string };
+    // Phase 2 吹灭蜡烛（对齐 Godot CardSlots.gd:1116-1147）
+    snuff: {};
 };
 
 type ResponseMap = {
@@ -35,7 +37,7 @@ type RequestMap = {
 };
 
 const DRAW_ACTIONS: Action['type'][] = ['draw'];
-const PLAY_ACTIONS: Action['type'][] = ['play', 'activate', 'hammer', 'bellRing'];
+const PLAY_ACTIONS: Action['type'][] = ['play', 'activate', 'hammer', 'bellRing', 'snuff'];
 export function isActionInvalid(tick: FightTick, action: Action) {
     switch (tick.fight.turn.phase) {
         case 'draw':

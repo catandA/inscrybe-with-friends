@@ -13,6 +13,37 @@ describe('getSideDeckPrintIds', () => {
     it('无 repeat 字段返回空数组', () => {
         expect(getSideDeckPrintIds({ name: 'x' })).toEqual([]);
     });
+
+    it('singleCat: 默认返回第一个分类的卡', () => {
+        expect(getSideDeckPrintIds({
+            name: 'x',
+            singleCat: {
+                '10 Empty': [10, 'emptyVessel'],
+                '10 Leaping': [10, 'leapingVessel'],
+            },
+        })).toEqual(Array(10).fill('emptyVessel'));
+    });
+
+    it('singleCat: 只有一个分类时正常展开', () => {
+        expect(getSideDeckPrintIds({
+            name: 'x',
+            singleCat: { '3 Sharp': [3, 'sharpVessel'] },
+        })).toEqual(['sharpVessel', 'sharpVessel', 'sharpVessel']);
+    });
+
+    it('draft: 默认预填卡池前 count 张', () => {
+        expect(getSideDeckPrintIds({
+            name: 'x',
+            draft: { cards: ['moxG', 'moxB', 'moxO'], count: 2 },
+        })).toEqual(['moxG', 'moxB']);
+    });
+
+    it('draft: count 超过卡池长度时返回全部', () => {
+        expect(getSideDeckPrintIds({
+            name: 'x',
+            draft: { cards: ['moxG', 'moxB'], count: 10 },
+        })).toEqual(['moxG', 'moxB']);
+    });
 });
 
 describe('getCardPower', () => {

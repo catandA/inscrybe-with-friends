@@ -11,7 +11,7 @@ import { FightAdapter, FightHost } from './Host';
 import { Rng } from './Rng';
 import { pick } from 'lodash';
 import { DECK_TYPES } from './Deck';
-import { cardCanPush, positions } from './utils';
+import { cardCanPush, oppositeSide, positions } from './utils';
 import { MOX_TYPES } from './constants';
 
 export interface FightTick {
@@ -97,12 +97,27 @@ export async function handleAction(tick: FightTick, side: FightSide, action: Act
 
     switch (action.type) {
         case 'draw': {
-            // const topIdx = tick.host.decks[side][action.deck].pop();
-            // if (topIdx == null) throw FightError.create(ErrorType.InvalidAction, 'You cannot draw from an empty deck');
-            // const printId = tick.fight.decks[side][action.deck][topIdx];
-            // const card = initCardFromPrint(prints, printId);
-            if (tick.host.decks[side][action.deck].length === 0) throw FightError.create(ErrorType.InvalidAction, 'You cannot draw from an empty deck');
-            stack.push({ type: 'draw', side, source: action.deck });
+            if (tick.host.decks[side][action.deck].length > 0) {
+                // 正常抽牌
+                stack.push({ type: 'draw', side, source: action.deck });
+            } else {
+                // 牌库空，检查 main 和 side 是否都空
+                const mainEmpty = tick.host.decks[side].main.length === 0;
+                const sideEmpty = tick.host.decks[side].side.length === 0;
+                if (!mainEmpty || !sideEmpty)
+                    throw FightError.create(ErrorType.InvalidAction, 'You cannot draw from an empty deck');
+                // Starvation 机制（对齐 Godot CardFight.gd:485-499）：
+                // 双牌库都空时，turnsStarving++，给对手塞一张 attack=turnsStarving 的 Starvation 卡。
+                tick.fight.players[side].turnsStarving++;
+                const strength = tick.fight.players[side].turnsStarving;
+                const starvCard = initCardFromPrint(prints, 'starvation');
+                starvCard.state.power = strength;
+                if (strength >= 5) {
+                    // >=5 时附加 Repulsive（voidDamage）+ Mighty Leap（airborne）
+                    starvCard.state.sigils.push('voidDamage' as Sigil, 'airborne' as Sigil);
+                }
+                stack.push({ type: 'draw', side: oppositeSide(side), card: starvCard });
+            }
             stack.push({ type: 'phase', phase: 'play' });
             break;
         }
@@ -361,9 +376,13 @@ async function settleEvents(tick: FightTick) {
         }
 
         if (tick.queue.length === 0) {
-            const sides = FIGHT_SIDES.slice().sort((a, b) => tick.fight.points[b] - tick.fight.points[a]);
-            if (tick.fight.points[sides[0]] - tick.fight.points[sides[1]] >= 5) {
-                for (const side of sides.slice(1)) tick.queue.unshift({ type: 'lifeLoss', side });
+            // damage_stun 保护（对齐 Godot CardFight.gd:998）：触发 lifeLoss 后，当前回合内不再检查 lifeLoss。
+            // pre-turn 阶段切换时由 phase settler 重置 damageStun。
+            if (!tick.fight.damageStun) {
+                const sides = FIGHT_SIDES.slice().sort((a, b) => tick.fight.points[b] - tick.fight.points[a]);
+                if (tick.fight.points[sides[0]] - tick.fight.points[sides[1]] >= 5) {
+                    for (const side of sides.slice(1)) tick.queue.unshift({ type: 'lifeLoss', side });
+                }
             }
         }
     }

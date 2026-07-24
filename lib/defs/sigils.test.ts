@@ -21,7 +21,10 @@ describe('符文行为快照', () => {
         it('单目标 attack 被 cancel：不造成伤害、不入 settled', async () => {
             const { fight, packet } = await runEvents(
                 (fight) => {
-                    placeCard(fight, 'opposing', 0, 'starvation'); // sigils: ['voidDamage']
+                    // starvation print 原有 voidDamage，Phase 2 改为 starvationStrike + 动态添加。
+                    // 这里手动给 adder 加 voidDamage 测试 Repulsive 行为。
+                    const repulsive = placeCard(fight, 'opposing', 0, 'adder');
+                    repulsive.state.sigils = ['voidDamage'];
                     placeCard(fight, 'player', 0, 'adder');        // power 2 攻击方
                 },
                 [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
@@ -31,7 +34,7 @@ describe('符文行为快照', () => {
             expect(packet.settled).toEqual([]);
             // 双方均未受伤
             expect(fight.field.player[0]?.state.health).toBe(2);
-            expect(fight.field.opposing[0]?.state.health).toBe(1);
+            expect(fight.field.opposing[0]?.state.health).toBe(2);
         });
     });
 
@@ -774,6 +777,108 @@ describe('符文行为快照', () => {
             expect(fight.field.player[0]?.state.health).toBe(8);
             // 无 shoot 事件
             expect(packet.settled.some(e => e.type === 'shoot')).toBe(false);
+        });
+    });
+
+    describe('unkillable (Unkillable, 普通=保留符文)', () => {
+        it('perish 后复制一张到手牌，复制体保留 unkillable', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // ouroboros 自带 unkillable；power 1 health 1
+                    placeCard(fight, 'player', 0, 'ouroboros');
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+            );
+
+            expect(packet.settled.some(e => e.type === 'draw')).toBe(true);
+            expect(fight.hands.player).toHaveLength(1);
+            const copy = fight.hands.player[0];
+            expect(copy.print).toBe('ouroboros');
+            // 普通 unkillable：复制体保留 unkillable
+            expect(copy.state.sigils).toContain('unkillable');
+            // ouroboros 成长：+1 power +1 health（2/2）
+            expect(copy.state.power).toBe(2);
+            expect(copy.state.health).toBe(2);
+        });
+    });
+
+    describe('unkillableEternal (Unkillable Eternal, 一次性)', () => {
+        it('perish 后复制一张到手牌，复制体去掉 unkillableEternal', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // 用 ouroboros 但手动替换 sigils 为 unkillableEternal
+                    const card = placeCard(fight, 'player', 0, 'ouroboros');
+                    card.state.sigils = ['unkillableEternal'];
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+            );
+
+            expect(packet.settled.some(e => e.type === 'draw')).toBe(true);
+            expect(fight.hands.player).toHaveLength(1);
+            const copy = fight.hands.player[0];
+            expect(copy.print).toBe('ouroboros');
+            // Eternal 变体：复制体去掉 unkillableEternal
+            expect(copy.state.sigils).not.toContain('unkillableEternal');
+            // ouroboros 成长仍保留
+            expect(copy.state.power).toBe(2);
+            expect(copy.state.health).toBe(2);
+        });
+    });
+
+    describe('starvationStrike (Starvation 额外伤害)', () => {
+        it('打出 attack<9 的 Starvation 卡：不触发额外优势', async () => {
+            const { fight, packet } = await runEvents(
+                () => {},
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: (() => {
+                        const c = initCardFromPrint(PRINTS, 'starvation');
+                        c.state.power = 5; // < 9，不触发
+                        return c;
+                    })(),
+                } as Event],
+            );
+
+            expect(fight.field.player[0]?.print).toBe('starvation');
+            // 不产生 points 事件
+            expect(packet.settled.some(e => e.type === 'points')).toBe(false);
+            expect(fight.points.player).toBe(0);
+        });
+
+        it('打出 attack=9 的 Starvation 卡：给打出方加 1 优势', async () => {
+            const { fight, packet } = await runEvents(
+                () => {},
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: (() => {
+                        const c = initCardFromPrint(PRINTS, 'starvation');
+                        c.state.power = 9; // 9 - 8 = 1
+                        return c;
+                    })(),
+                } as Event],
+            );
+
+            expect(packet.settled.some(e => e.type === 'points')).toBe(true);
+            expect(fight.points.player).toBe(1);
+        });
+
+        it('打出 attack=12 的 Starvation 卡：给打出方加 4 优势', async () => {
+            const { fight } = await runEvents(
+                () => {},
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: (() => {
+                        const c = initCardFromPrint(PRINTS, 'starvation');
+                        c.state.power = 12; // 12 - 8 = 4
+                        return c;
+                    })(),
+                } as Event],
+            );
+
+            expect(fight.points.player).toBe(4);
         });
     });
 });

@@ -36,6 +36,8 @@ type EventMap = {
     response: { side: FightSide; req: ActionReq; res: ActionRes; };
     lifeLoss: { side: FightSide };
     points: { side: FightSide; amount: number };
+    // Phase 2 吹灭蜡烛（对齐 Godot CardSlots.gd:1116-1147）
+    snuffCandle: { side: FightSide };
 };
 
 // NOTE: assume the `fight` object is always dirty, clone any objects inside it before making state from it
@@ -48,6 +50,9 @@ export const eventSettlers: {
             fight.turn.side = event.side;
             fight.players[event.side].turnHammers = 0;
         }
+        // damage_stun 重置：pre-turn 阶段切换时重置（对齐 Godot start_turn line 1203）。
+        // 同一 combat 内只掉 1 蜡烛，下一回合开始时解除保护。
+        if (event.phase === 'pre-turn') fight.damageStun = false;
     },
     energy(fight, event) {
         const { energy } = fight.players[event.side];
@@ -164,9 +169,22 @@ export const eventSettlers: {
     lifeLoss(fight, event) {
         fight.players[event.side].deaths++;
         for (const side of FIGHT_SIDES) fight.points[side] = 0;
+        // 触发 lifeLoss 后置位 damageStun，当前回合内不再检查 lifeLoss。
+        // 对齐 Godot CardFight.gd:1006,1011（inflict_damage 中掉蜡烛后设 damage_stun = true）。
+        // pre-turn 阶段切换时由 phase settler 重置。
+        fight.damageStun = true;
     },
     points(fight, event) {
         fight.points[event.side] += event.amount;
+    },
+    snuffCandle(fight, event) {
+        // 吹灭蜡烛（对齐 Godot CardSlots.gd:1124-1125）：
+        // 自己掉 1 蜡烛 + points 重置 + damageStun 重置（允许本回合继续掉蜡烛）。
+        // 与 lifeLoss 不同：lifeLoss 置 damageStun=true（保护本回合不再掉），
+        // 吹蜡烛是主动行为，重置 damageStun 允许后续攻击仍可掉蜡烛。
+        fight.players[event.side].deaths++;
+        for (const side of FIGHT_SIDES) fight.points[side] = 0;
+        fight.damageStun = false;
     },
 };
 
@@ -272,7 +290,7 @@ export function translateEvent(event: Event, side: FightSide, forClient: boolean
         isEventType([
             'phase', 'energy', 'energySpend', 'bones',
             'draw', 'request', 'response', 'mustPlay',
-            'lifeLoss', 'points',
+            'lifeLoss', 'points', 'snuffCandle',
         ], event)
     && event.side) {
         event.side = oppositeSide(event.side);

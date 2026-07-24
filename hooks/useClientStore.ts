@@ -338,4 +338,5 @@ export const animationDurations: Record<Event['type'], number> = {
     mustPlay: 0.1,
     lifeLoss: 0.2,
     points: 0.2,
+    snuffCandle: 0.3,
 };

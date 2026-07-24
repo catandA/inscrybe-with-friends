@@ -42,6 +42,11 @@ export interface FightOptions {
     maxCommonsSide: number;
     /** 对齐 Godot opt_actives；true 时主动技能可选触发。机制待 Phase 2 实现，先占位。 */
     optActives: boolean;
+    // Godot default_header 对齐字段（Phase 2 新增）
+    /** 对齐 Godot allow_snuffing_candles；true 时玩家可主动吹灭自己 1 根蜡烛（需 lives > 1 守卫）。 */
+    allowSnuffingCandles: boolean;
+    /** 对齐 Godot snuff_card；吹灭蜡烛后抽到的卡 printId，默认 'greaterSmoke'。 */
+    snuffCard: string;
 }
 
 export interface Fight<InclSide extends FightSide = never> {
@@ -54,6 +59,13 @@ export interface Fight<InclSide extends FightSide = never> {
     } | null;
     field: Record<FightSide, (Card | null)[]>;
     players: Record<FightSide, PlayerState>;
+
+    /**
+     * damage_stun 保护（对齐 Godot CardFight.gd:998-1011）。
+     * 触发 lifeLoss 后置位，当前回合内不再检查 lifeLoss（同一 combat 只掉 1 蜡烛）。
+     * pre-turn 阶段切换时重置（对齐 Godot start_turn line 1203）。
+     */
+    damageStun: boolean;
 
     // TODO: Move private per-player state to a single key
     mustPlay: Record<InclSide, number | null>;
@@ -68,6 +80,13 @@ export interface PlayerState {
     deckSizes: Record<DeckType, number>;
     handSize: number;
     turnHammers: number;
+    /**
+     * Starvation 计数（对齐 Godot CardFight.gd:73,485-487）。
+     * 当该方主/副牌库都抽空时，每次再触发抽牌 turnsStarving += 1，
+     * 并给对手塞一张 attack = turnsStarving 的 Starvation 卡。
+     * per-side 维护（Web 服务器权威，双方各自计数）。
+     */
+    turnsStarving: number;
 }
 
 const initPlayerState = (): PlayerState => ({
@@ -77,6 +96,7 @@ const initPlayerState = (): PlayerState => ({
     deckSizes: fromEntries(DECK_TYPES.map(type => [type, 0])),
     handSize: 0,
     turnHammers: 0,
+    turnsStarving: 0,
 });
 
 export function createFight<Side extends FightSide = never>(opts: FightOptions, sides: readonly Side[], decks: Record<Side, DeckCards>): Fight<Side> {
@@ -95,6 +115,7 @@ export function createFight<Side extends FightSide = never>(opts: FightOptions, 
             player: { ...initPlayerState(), bones: opts.startingBones },
             opposing: { ...initPlayerState(), bones: opts.startingBones },
         },
+        damageStun: false,
         hands,
         mustPlay,
         decks,
@@ -102,7 +123,7 @@ export function createFight<Side extends FightSide = never>(opts: FightOptions, 
 }
 
 export function translateFight<Side extends FightSide>(hostFight: Fight<FightSide>, side: Side): Fight<'player'> {
-    const { opts, points, turn, waitingFor, field, players, mustPlay, hands, decks } = hostFight;
+    const { opts, points, turn, waitingFor, field, players, mustPlay, hands, decks, damageStun } = hostFight;
     const opposingSide = side === 'player' ? 'opposing' : 'player';
     return {
         opts,
@@ -123,6 +144,7 @@ export function translateFight<Side extends FightSide>(hostFight: Fight<FightSid
             player: players[side],
             opposing: players[opposingSide],
         },
+        damageStun,
         mustPlay: {
             player: mustPlay[side],
         },

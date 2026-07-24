@@ -35,11 +35,34 @@ export interface Ruleset<Strict = false> {
 }
 export interface SideDeck {
     name: string;
+    /** single 格式：重复 N 张同一卡。对齐 Godot `{ type: "single", card, count }`。 */
     repeat?: [number, string];
+    /** single_cat 格式：分类选择，每类是 [count, printId]。对齐 Godot `{ type: "single_cat", cards: { prefix: { card, count } } }`。 */
+    singleCat?: Record<string, [number, string]>;
+    /** draft 格式：从卡池中选 count 张。对齐 Godot `{ type: "draft", cards: [...], count }`。 */
+    draft?: { cards: string[]; count: number };
 }
+
+/**
+ * 从 SideDeck 定义生成 printId 列表。
+ * - repeat：展开为 N 张同一卡。
+ * - singleCat：默认返回第一个分类的卡（UI 层可让用户切换分类）。
+ * - draft：默认预填卡池前 count 张（UI 层可让用户自由选择）。
+ * 无任何字段时返回空数组。
+ */
 export function getSideDeckPrintIds(sideDeck: SideDeck): string[] {
     const ids: string[] = [];
-    if (sideDeck.repeat) ids.push(...Array(sideDeck.repeat[0]).fill(sideDeck.repeat[1]));
+    if (sideDeck.repeat) {
+        ids.push(...Array(sideDeck.repeat[0]).fill(sideDeck.repeat[1]));
+    } else if (sideDeck.singleCat) {
+        // 默认取第一个分类（UI 层可让用户选）
+        const firstCat = Object.values(sideDeck.singleCat)[0];
+        if (firstCat) ids.push(...Array(firstCat[0]).fill(firstCat[1]));
+    } else if (sideDeck.draft) {
+        // 默认预填卡池前 count 张（UI 层可让用户自由选）
+        const { cards, count } = sideDeck.draft;
+        for (let i = 0; i < Math.min(count, cards.length); i++) ids.push(cards[i]);
+    }
     return ids;
 };
 

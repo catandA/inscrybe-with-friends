@@ -122,6 +122,8 @@ function PlayTestPage() {
             maxCommonsMain: 4,
             maxCommonsSide: 10,
             optActives: false,
+            allowSnuffingCandles: false,
+            snuffCard: 'greaterSmoke',
         }, FIGHT_SIDES, decks);
         const host = createFightHost(fight);
 

@@ -27,6 +27,8 @@ export const zFightOptions = z.object({
     maxCommonsMain: z.number(),
     maxCommonsSide: z.number(),
     optActives: z.boolean(),
+    allowSnuffingCandles: z.boolean(),
+    snuffCard: z.string(),
 }) satisfies z.ZodType<FightOptions>;
 
 export const defaultFightOptions = (ruleset = 'imfComp'): FightOptions => ({
@@ -46,6 +48,9 @@ export const defaultFightOptions = (ruleset = 'imfComp'): FightOptions => ({
     maxCommonsMain: 4,
     maxCommonsSide: 10,
     optActives: false,
+    // Phase 2 吹蜡烛（对齐 Godot allow_snuffing_candles + snuff_card）
+    allowSnuffingCandles: false,
+    snuffCard: 'greaterSmoke',
 });
 
 export const zDeckCards = z.object({
@@ -101,6 +106,9 @@ export const zAction = z.union([
         type: z.literal('activate'),
         lane: z.number(),
         sigil: z.string(),
+    }),
+    z.object({
+        type: z.literal('snuff'),
     }),
 ]) satisfies z.ZodType<Action>;
 

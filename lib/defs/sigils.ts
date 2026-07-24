@@ -237,6 +237,11 @@ const SIGIL_INFOS = {
         name: 'Unkillable',
         description: 'When this card perishes, a copy of it enters your hand.',
     },
+    // Unkillable (Eternal)：复制体去掉 unkillableEternal（一次性）。对齐 Godot Unkillable (Eternal)。
+    unkillableEternal: {
+        name: 'Unkillable (Eternal)',
+        description: 'When this card perishes, a copy of it without this sigil enters your hand.',
+    },
     voidDamage: {
         name: 'Repulsive',
         description: 'If a creature would attack this card, it does not.',
@@ -392,6 +397,12 @@ const SIGIL_INFOS = {
     shieldLatch: {
         name: 'Shield Latch',
         description: 'When this card perishes, choose a creature. That creature gains [sigil:armored|Armored].',
+    },
+    // Starvation 专属符文：打出时若 attack >= 9，给打出方加 (attack - 8) 优势。
+    // 对齐 Godot CardFight.gd:891-896（统一用 playedCard.attack 而非本地 turns_starving，避免双路径分歧）。
+    starvationStrike: {
+        name: 'Starvation Strike',
+        description: 'When this card is played, if its [power|Power] is 9 or greater, its owner gains advantage equal to the [power|Power] minus 8.',
     },
 } as const satisfies Record<string, SigilInfo>;
 
@@ -976,24 +987,8 @@ const SIGIL_EFFECTS = {
             },
         },
     },
-    unkillable: {
-        runAs: 'played',
-        preSettleRead: {
-            perish() {
-                const card = this.initCard(this.card.print);
-                card.state.sigils = this.card.state.sigils;
-                // TODO - Redo this using a card print effect system
-                if (this.card.print === 'ouroboros' && typeof card.state.power === 'number') {
-                    card.state.power += 1;
-                    card.state.health += 1;
-                }
-                this.createEvent('draw', {
-                    side: this.side,
-                    card,
-                });
-            },
-        },
-    },
+    unkillable: unkillableEffect(false),
+    unkillableEternal: unkillableEffect(true),
     voidDamage: {
         runAs: 'attackee',
         preSettleWrite: {
@@ -1463,6 +1458,26 @@ const SIGIL_EFFECTS = {
     bombLatch: latchEffect('detonator'),
     brittleLatch: latchEffect('brittle'),
     shieldLatch: latchEffect('armored'),
+
+    // Starvation 专属：打出时若 attack >= 9，给打出方加 (attack - 8) 优势。
+    // 对齐 Godot CardFight.gd:891-896（统一用 playedCard.attack）。
+    starvationStrike: {
+        runAs: 'played',
+        postSettle: {
+            play(event) {
+                const power = this.getPower(event.pos);
+                if (power != null && power >= 9) {
+                    // 给打出方加 (power - 8) 优势。
+                    // Godot inflict_damage(-turns_starving + 8) 从受击方视角是 -(turns_starving - 8)，
+                    // 即给对手 +(turns_starving - 8) 优势。Web 中 points[打出方] += power - 8。
+                    this.createEvent('points', {
+                        side: this.side,
+                        amount: power - 8,
+                    });
+                }
+            },
+        },
+    },
 } satisfies {
     [S in Sigil]?: SigilEffects<S>;
 };
@@ -1497,6 +1512,39 @@ function latchEffect(grantSigil: Sigil): SigilEffects<'bombLatch' | 'brittleLatc
                         sigil: grantSigil,
                     });
                 },
+            },
+        },
+    };
+}
+
+/**
+ * Unkillable 共用工厂：死亡时复制一张到手牌。
+ * - 普通（stripsSigil=false）：复制体保留所有符文（对齐 Godot Unkillable.gd）。
+ * - Eternal 变体（stripsSigil=true）：复制体去掉 unkillableEternal（一次性，对齐 Godot Unkillable (Eternal)）。
+ * ouroboros 的 +1/+1 成长逻辑两种变体都保留。
+ */
+function unkillableEffect(stripsSigil: boolean): SigilEffects<'unkillable' | 'unkillableEternal'> {
+    return {
+        runAs: 'played',
+        preSettleRead: {
+            perish() {
+                const card = this.initCard(this.card.print);
+                // 修复原 bug：原代码 card.state.sigils = this.card.state.sigils 是引用赋值，
+                // 会让复制体和原卡共享同一数组。改为拷贝。
+                if (stripsSigil) {
+                    card.state.sigils = lists.subtract(this.card.state.sigils, ['unkillableEternal']);
+                } else {
+                    card.state.sigils = [...this.card.state.sigils];
+                }
+                // TODO - Redo this using a card print effect system
+                if (this.card.print === 'ouroboros' && typeof card.state.power === 'number') {
+                    card.state.power += 1;
+                    card.state.health += 1;
+                }
+                this.createEvent('draw', {
+                    side: this.side,
+                    card,
+                });
             },
         },
     };

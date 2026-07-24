@@ -11,7 +11,9 @@ const RULESETS = {
                 banned: true,
                 power: 1,
                 health: 1,
-                sigils: ['voidDamage'],
+                // starvationStrike：打出时 attack>=9 造成额外优势。
+                // voidDamage（Repulsive）+ airborne（Mighty Leap）在 turnsStarving>=5 时动态添加。
+                sigils: ['starvationStrike'],
             },
             greaterSmoke: {
                 name: 'Greater Smoke',
@@ -1074,6 +1076,34 @@ const RULESETS = {
                 cost: { type: 'energy', amount: 1 },
                 noSac: true,
             },
+            // Vessel 变体（对齐 Godot standard.json side_decks.Vessels 的 single_cat 分类）
+            leapingVessel: {
+                name: 'Leaping Vessel',
+                banned: true,
+                power: 0,
+                health: 3,
+                cost: { type: 'energy', amount: 1 },
+                noSac: true,
+                sigils: ['airborne'],
+            },
+            bloodyVessel: {
+                name: 'Bloody Vessel',
+                banned: true,
+                power: 0,
+                health: 3,
+                cost: { type: 'energy', amount: 1 },
+                noSac: true,
+                sigils: ['threeSacs'],
+            },
+            sharpVessel: {
+                name: 'Sharp Vessel',
+                banned: true,
+                power: 0,
+                health: 3,
+                cost: { type: 'energy', amount: 1 },
+                noSac: true,
+                sigils: ['sharp'],
+            },
 
             nullConduit: {
                 name: 'Null Conduit',
@@ -1142,9 +1172,15 @@ const RULESETS = {
                 name: 'Skeletons',
                 repeat: [10, 'skeleton'],
             },
+            // single_cat 格式示例（对齐 Godot standard.json side_decks.Vessels）
             vessels: {
                 name: 'Vessels',
-                repeat: [10, 'emptyVessel'],
+                singleCat: {
+                    '10 Empty': [10, 'emptyVessel'],
+                    '10 Leaping': [10, 'leapingVessel'],
+                    '10 Bloody': [10, 'bloodyVessel'],
+                    '10 Sharp': [10, 'sharpVessel'],
+                },
             },
             moxG: {
                 name: 'Emerald Mox',
@@ -1158,7 +1194,11 @@ const RULESETS = {
                 name: 'Ruby Mox',
                 repeat: [10, 'moxO'],
             },
-            // TODO: add sigiled vessels
+            // draft 格式示例（对齐 Godot standard.json side_decks["Mox (draft)"]）
+            moxDraft: {
+                name: 'Mox (Draft)',
+                draft: { cards: ['moxG', 'moxB', 'moxO'], count: 10 },
+            },
         },
         sigilParams: {
             antSpawner: ['workerAnt'],
@@ -1171,11 +1211,17 @@ const RULESETS = {
             skeletonStrafe: ['skeleton'],
             squirrelStrafe: ['squirrel'],
             activatedDealDamage: [1, 1],
-            activatedDiceRollEnergy: [1],
+            // Phase 2 主动技能变体（对齐 Godot CardInfo.gd 描述）：
+            // - Power Dice (2)：2 能量掷骰（gamblobot desc 明确说"cost increased to 2 energy"）
+            // - Stimulate (4)：4 能量换 +1/+1
+            // - Enlarge (3)：3 骨头换 +1/+1（已正确）
+            // - Bonehorn (1)：1 能量换 1 骨头（已正确）
+            // - Disentomb (Corpses)：2 骨头换 witheredCorpse（已正确）
+            activatedDiceRollEnergy: [2],
             activatedDrawSkeleton: [2, 'witheredCorpse'],
             activatedEnergyToBones: [1, 1],
             activatedSacrificeDraw: [3],
-            activatedStatsUpEnergy: [3, 1],
+            activatedStatsUpEnergy: [4, 1],
             activatedStatsUp: [3, 1],
             activatedHealBones: [2, 2],
             conduitGainEnergy: [3],
@@ -1202,6 +1248,18 @@ for (const [ruleset, { prints, sideDecks, sigilParams }] of Object.entries(rules
     for (const [, sideDeck] of Object.entries(sideDecks) as [string, SideDeck][]) {
         if (sideDeck.repeat && !Object.hasOwn(prints, sideDeck.repeat[1]))
             throw new Error(`Side deck ${sideDeck.name} references invalid print ${sideDeck.repeat[1]}`);
+        if (sideDeck.singleCat) {
+            for (const [cat, [count, printId]] of Object.entries(sideDeck.singleCat)) {
+                if (!Object.hasOwn(prints, printId))
+                    throw new Error(`Side deck ${sideDeck.name} category ${cat} references invalid print ${printId}`);
+            }
+        }
+        if (sideDeck.draft) {
+            for (const printId of sideDeck.draft.cards) {
+                if (!Object.hasOwn(prints, printId))
+                    throw new Error(`Side deck ${sideDeck.name} draft references invalid print ${printId}`);
+            }
+        }
     }
     for (const [sigil, params] of Object.entries(sigilParams)) {
         for (let i = 0; i < params.length; i++) {

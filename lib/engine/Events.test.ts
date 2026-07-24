@@ -1,5 +1,41 @@
 import { describe, it, expect } from 'vitest';
-import { translateEvent, Event } from './Events';
+import { translateEvent, Event, eventSettlers } from './Events';
+import { makeMinimalFight } from './__testutils__/fight';
+
+describe('damage_stun (lifeLoss settler)', () => {
+    it('lifeLoss settler 置位 damageStun + 重置 points', () => {
+        const fight = makeMinimalFight();
+        fight.points = { player: 5, opposing: 0 };
+        expect(fight.damageStun).toBe(false);
+
+        eventSettlers.lifeLoss(fight, { type: 'lifeLoss', side: 'opposing' });
+
+        // 掉蜡烛后 damageStun 置位
+        expect(fight.damageStun).toBe(true);
+        // 双方 points 重置为 0
+        expect(fight.points).toEqual({ player: 0, opposing: 0 });
+        // opposing 掉 1 蜡烛
+        expect(fight.players.opposing.deaths).toBe(1);
+    });
+
+    it('phase settler 在 pre-turn 时重置 damageStun', () => {
+        const fight = makeMinimalFight();
+        fight.damageStun = true;
+
+        eventSettlers.phase(fight, { type: 'phase', phase: 'pre-turn', side: 'player' });
+
+        expect(fight.damageStun).toBe(false);
+    });
+
+    it('phase settler 在非 pre-turn 阶段不重置 damageStun', () => {
+        const fight = makeMinimalFight();
+        fight.damageStun = true;
+
+        eventSettlers.phase(fight, { type: 'phase', phase: 'attack' });
+
+        expect(fight.damageStun).toBe(true);
+    });
+});
 
 describe('translateEvent', () => {
     it('opposing 视角下对手的 draw：隐藏 card/source，side 翻转', () => {
