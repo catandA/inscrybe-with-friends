@@ -1077,6 +1077,8 @@ const RULESETS = {
                 noSac: true,
             },
             // Vessel 变体（对齐 Godot standard.json side_decks.Vessels 的 single_cat 分类）
+            // 注意：portrait 未显式指定——无独立精灵表索引，Sprite 组件会降级为占位符。
+            // 如需正式美术，需在 lib/spritesheets/portraits.ts 补坐标或在 PNG 中加图素。
             leapingVessel: {
                 name: 'Leaping Vessel',
                 banned: true,
@@ -1140,6 +1142,8 @@ const RULESETS = {
             },
 
             // Thick 测试卡（对齐 Godot standard.json 的 Thick Droid）
+            // 注意：portrait 未显式指定——无独立精灵表索引，Sprite 组件会降级为占位符。
+            // 如需正式美术，需在 lib/spritesheets/portraits.ts 补坐标或在 PNG 中加图素。
             thickDroid: {
                 name: 'Thick Droid',
                 power: 1,

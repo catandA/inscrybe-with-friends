@@ -15,8 +15,11 @@
 
 .panels {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
+    gap: 4em;
+    /* 允许子 Box 内 Select 下拉项溢出叠加在右侧 Box 之上，不被截断 */
+    overflow: visible;
 }
 
 .vs {
@@ -42,4 +45,38 @@
 
 .panels .playerPanel {
     width: 200em;
+}
+
+/* 大厅 FightOptions 紧凑只读展示（替代原 YAML dump） */
+.optionGrid {
+    /* 单列布局：每行一个属性，避免 grid 双列时名字过宽把值挤到不可见 */
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    margin-top: 2em;
+    max-height: 80em;
+    overflow: auto;
+}
+
+.optionItem {
+    /* 每行：名字（固定宽） + 值（跟随）。确保值始终可见。 */
+    display: flex;
+    align-items: baseline;
+    gap: 2em;
+    line-height: 1.2;
+}
+
+.optionName {
+    color: var(--ui-dark);
+    white-space: nowrap;
+    /* 固定宽度避免长名字把值挤到下一行或不可见 */
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.optionVal {
+    color: var(--ui);
+    /* 值允许换行，但通常很短 */
+    white-space: nowrap;
+    margin-left: auto;
 }

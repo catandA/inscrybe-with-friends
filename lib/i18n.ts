@@ -52,11 +52,17 @@ i18n.use(initReactI18next).init({
 /**
  * 在客户端 mount 后（hydration 完成后）同步真实语言偏好。
  * 应在 useEffect 中调用一次；此时切换语言只是普通的 React 更新，不会与 SSR 树比对。
+ *
+ * 同时设置 document.documentElement.lang，使 CSS :lang() 选择器生效
+ * （用于中文环境下微调字距/字号，平衡中英文字形视觉差异）。
  */
 export function syncLanguageAfterMount(): void {
     const preferred = detectPreferredLanguage();
     if (preferred !== i18n.language) {
         i18n.changeLanguage(preferred);
+    }
+    if (typeof document !== 'undefined') {
+        document.documentElement.lang = preferred;
     }
 }
 
@@ -68,6 +74,7 @@ export function changeLanguage(lng: Language): void {
     i18n.changeLanguage(lng);
     if (typeof window !== 'undefined') {
         window.localStorage.setItem(STORAGE_KEY, lng);
+        document.documentElement.lang = lng;
     }
 }
 

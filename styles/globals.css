@@ -3,9 +3,27 @@
     src: url(/fonts/Marksman.woff);
 }
 
+/*
+ * Fusion Pixel Font：中文像素字体（OFL-1.1）。
+ * 文件名格式：fusion-pixel-{尺寸}px-proportional-zh_hans.otf.woff2
+ * 切换尺寸时，修改下面 src 的文件名即可（已下载 8/10/12px 三个版本）：
+ *   - 8px:  fusion-pixel-8px-proportional-zh_hans.otf.woff2
+ *   - 10px: fusion-pixel-10px-proportional-zh_hans.otf.woff2  ← 当前启用
+ *   - 12px: fusion-pixel-12px-proportional-zh_hans.otf.woff2
+ */
+@font-face {
+    font-family: 'Fusion Pixel';
+    src: url('/fonts/fusion-pixel-12px-proportional-zh_hans.otf.woff2') format('woff2');
+    font-display: swap;
+    /* 像素字体只在对应字号下清晰；允许浏览器在小字号时回落到系统字体 */
+    unicode-range: U+4E00-9FFF, U+3000-303F, U+FF00-FFEF, U+2E80-2EFF, U+3400-4DBF;
+}
+
 :root {
     --max-width: 1100px;
     --font-gbc: Marksman;
+    /* 中文环境下回退到 Fusion Pixel 字体（由 :lang(zh) 切换 var(--font-zh)） */
+    --font-zh: 'Fusion Pixel', Marksman, sans-serif;
 
     --ui-rgb: 215, 226, 163;
     --ui: rgb(var(--ui-rgb));
@@ -50,6 +68,18 @@ body {
     user-select: none;
     background-color: #000;
     color: var(--ui);
+}
+
+/*
+ * 中文环境切换字体并微调字形视觉。
+ * - font-family 切换为 Fusion Pixel（中文像素字体，与 Marksman 视觉风格更协调）
+ * - letter-spacing 负值让中文紧凑，平衡中英文字形视觉差异
+ * - 不改 font-size 以避免连锁影响 em 布局单位
+ * document.documentElement.lang 由 lib/i18n.ts 的 syncLanguageAfterMount/changeLanguage 设置
+ */
+:lang(zh) {
+    font-family: var(--font-zh);
+    letter-spacing: -0.03em;
 }
 
 a {

@@ -75,10 +75,10 @@
         "emptyDeck": "No cards in your deck, add them by selecting them on the right",
         "sideDeckLabel": "Side Deck:",
         "validation": {
-            "deckSizeMin": "Main deck needs at least {{n}} cards",
-            "rareLimit": "Rare cards limited to 1 in main deck",
-            "maxCommonsMain": "Each common card limited to {{n}} in main deck",
-            "maxCommonsSide": "Each common card limited to {{n}} in side deck"
+            "deckSizeMin": "Main deck needs at least {{min}} cards (current {{current}})",
+            "rareLimit": "{{name}} (rare) max 1 (current {{current}})",
+            "maxCommonsMain": "{{name}} max {{max}} (current {{current}})",
+            "maxCommonsSide": "Side deck {{name}} max {{max}} (current {{current}})"
         }
     },
     "rulesets": {

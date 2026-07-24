@@ -2,6 +2,8 @@ import styles from './edit-decks.module.css';
 import { rulesets, userRulesetKey } from '@/lib/defs/prints';
 import { entries } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { isCardsDirty, useDeckSync } from '@/hooks/useDeckStore';
 import { useResolvedRuleset } from '@/hooks/useResolvedRuleset';
 import { trpc } from '@/lib/trpc';
@@ -34,18 +36,18 @@ function useDeck(init: DeckCards) {
  *
  * Phase 3.4：支持用户 ruleset，prints 和 opts 从 merged ruleset 解析。
  */
-function validateDeck(deck: DeckCards, rulesetId: string, resolvedRuleset: Ruleset | null): { isValid: boolean; errors: string[] } {
+function validateDeck(deck: DeckCards, rulesetId: string, resolvedRuleset: Ruleset | null, t: TFunction): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     if (!resolvedRuleset) {
-        return { isValid: false, errors: ['Ruleset is loading...'] };
+        return { isValid: false, errors: [t('decks.rulesetLoading')] };
     }
 
     const opts = defaultFightOptions(rulesetId);
     const prints = resolvedRuleset.prints;
 
     if (deck.main.length < opts.deckSizeMin) {
-        errors.push(`主牌组至少需要 ${opts.deckSizeMin} 张卡（当前 ${deck.main.length} 张）`);
+        errors.push(t('decks.validation.deckSizeMin', { min: opts.deckSizeMin, current: deck.main.length }));
     }
 
     const countIds = (ids: string[]) => {
@@ -59,9 +61,9 @@ function validateDeck(deck: DeckCards, rulesetId: string, resolvedRuleset: Rules
         const print = prints[id];
         if (!print) continue;
         if (print.rare) {
-            if (count > 1) errors.push(`${print.name}（稀有）最多 1 张（当前 ${count} 张）`);
+            if (count > 1) errors.push(t('decks.validation.rareLimit', { name: print.name, current: count }));
         } else if (count > opts.maxCommonsMain) {
-            errors.push(`${print.name} 最多 ${opts.maxCommonsMain} 张（当前 ${count} 张）`);
+            errors.push(t('decks.validation.maxCommonsMain', { name: print.name, max: opts.maxCommonsMain, current: count }));
         }
     }
 
@@ -70,7 +72,7 @@ function validateDeck(deck: DeckCards, rulesetId: string, resolvedRuleset: Rules
         const print = prints[id];
         if (!print) continue;
         if (!print.rare && count > opts.maxCommonsSide) {
-            errors.push(`副牌组 ${print.name} 最多 ${opts.maxCommonsSide} 张（当前 ${count} 张）`);
+            errors.push(t('decks.validation.maxCommonsSide', { name: print.name, max: opts.maxCommonsSide, current: count }));
         }
     }
 
@@ -78,6 +80,7 @@ function validateDeck(deck: DeckCards, rulesetId: string, resolvedRuleset: Rules
 }
 
 export default function EditDecks() {
+    const { t } = useTranslation();
     const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
     const [deckNameInput, setDeckName] = useState('');
     const [selectedRuleset, setSelectedRuleset] = useState(Object.keys(rulesets)[0]);
@@ -94,9 +97,9 @@ export default function EditDecks() {
     // 内置 + 用户 rulesets 的选项列表
     const rulesetOptions = useMemo(() => {
         const builtin = entries(rulesets).map(([id, r]) => [id, r.name] as [string, string]);
-        const user = (userRulesets.data ?? []).map(r => [userRulesetKey(r.id), `${r.name} (custom)`] as [string, string]);
+        const user = (userRulesets.data ?? []).map(r => [userRulesetKey(r.id), `${r.name}${t('rulesets.customSuffix')}`] as [string, string]);
         return [...builtin, ...user];
-    }, [userRulesets.data]);
+    }, [userRulesets.data, t]);
 
     // 当前 resolved ruleset 的 sideDecks
     const sideDecks = resolvedRuleset?.sideDecks ?? {};
@@ -141,7 +144,7 @@ export default function EditDecks() {
     const canMakeNew = !isDirty;
 
     // 牌组合法性校验（deckSizeMin / rare 限 1 / commons 上限）。非法时阻止保存。
-    const validation = useMemo(() => validateDeck(deck, selectedRuleset, resolvedRuleset), [deck, selectedRuleset, resolvedRuleset]);
+    const validation = useMemo(() => validateDeck(deck, selectedRuleset, resolvedRuleset, t), [deck, selectedRuleset, resolvedRuleset, t]);
     const canSave = isDirty && validation.isValid;
 
     useEffect(() => {
@@ -184,7 +187,7 @@ export default function EditDecks() {
         // TODO: add (x) counter for conflicts
         if (!deckNameToCreate) {
             for (let i = 1; i < 100; i++) {
-                deckNameToCreate = `New Deck (${i})`;
+                deckNameToCreate = t('decks.newDeckName', { n: i });
                 if (!Object.values(decks).some(deck => deck.name === deckNameToCreate)) break;
             }
         };
@@ -250,7 +253,7 @@ export default function EditDecks() {
                         className={styles.select}
                         options={rulesetOptions}
                         value={selectedRuleset}
-                        placeholder="Select Ruleset"
+                        placeholder={t('decks.selectRulesetPlaceholder')}
                         onSelect={id => onChangeRuleset(id)}
                     />
                     <Select
@@ -259,31 +262,31 @@ export default function EditDecks() {
                         disabled={!deckEntries.length}
                         value={selectedDeckId}
                         content={deckNameInput}
-                        placeholder="Select a Deck"
+                        placeholder={t('decks.selectDeckPlaceholder')}
                         editable
                         onSelect={id => onSelectDeck(id)}
                         onEdit={name => onDeckNameChange(name)}
                     />
                     <div style={{ flex: 1 }} />
                     <Button onClick={onClearDeck}>
-                        <Text size={12}>Clear Deck</Text>
+                        <Text size={12}>{t('decks.clearDeck')}</Text>
                     </Button>
                 </div>
                 <div className={styles.controlsRow}>
                     <div className={styles.actions}>
-                        <AssetButton path="/assets/plus.png" title="Create New Deck" disabled={!canMakeNew} onClick={() => onCreateDeck()} />
-                        <AssetButton path="/assets/disk.png" title="Save Deck" disabled={!canSave || isSaving} onClick={() => onSaveDeck()} />
-                        <AssetButton path="/assets/trash.png" title="Delete Deck" disabled={!hasDeckSelected || isDeleting} onClick={() => onDeleteDeck(selectedDeckId!)} />
+                        <AssetButton path="/assets/plus.png" title={t('decks.createDeckTitle')} disabled={!canMakeNew} onClick={() => onCreateDeck()} />
+                        <AssetButton path="/assets/disk.png" title={t('decks.saveDeckTitle')} disabled={!canSave || isSaving} onClick={() => onSaveDeck()} />
+                        <AssetButton path="/assets/trash.png" title={t('decks.deleteDeckTitle')} disabled={!hasDeckSelected || isDeleting} onClick={() => onDeleteDeck(selectedDeckId!)} />
                         <AssetButton
                             // disabled={!isDirty || isSaving}
                             disabled
                             path={`/assets/${!isDirty ? 'cloudgreen' : errorSaving ? 'cloudred' : 'cloud'}.png`}
-                            title={!isDirty ? 'Synced' : errorSaving ? 'Error while saving deck' : 'Syncing'}
+                            title={!isDirty ? t('decks.synced') : errorSaving ? t('decks.errorSaving') : t('decks.syncing')}
                             onClick={() => onSaveDeck()}
                         />
                     </div>
                     <div style={{ flex:1 }} />
-                    <Text size={14}>{`${deck.main.length}`} card{deck.main.length === 1 ? '' : 's'}</Text>
+                    <Text size={14}>{t('decks.cardCount', { count: deck.main.length })}</Text>
                 </div>
                 {validation.errors.length > 0 && (
                     <div className={styles.validationErrors}>
@@ -295,14 +298,14 @@ export default function EditDecks() {
             </Box>
             <div className={styles.deck}>
                 {!deck.main.length && <div className={styles.emptyDeck}>
-                    <Text size={14}>No cards in your deck, add them by selecting them on the right</Text>
+                    <Text size={14}>{t('decks.emptyDeck')}</Text>
                 </div>}
                 <PrintList editable prints={deck.main} onSelect={onDeckPrintSelect} ruleset={selectedRuleset} />
             </div>
             <Box className={styles.sideDeck}>
                 <PrintList stacked prints={deck.side} ruleset={selectedRuleset} />
                 <div className={styles.sideDeckSelector}>
-                    <Text size={14}>Side Deck:</Text>
+                    <Text size={14}>{t('decks.sideDeckLabel')}</Text>
                     <Select
                         options={sideEntries.map(([id, sideDeck]) => [id, sideDeck.name])}
                         value={selectedSideDeck}

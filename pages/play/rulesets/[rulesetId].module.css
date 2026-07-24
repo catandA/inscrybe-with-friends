@@ -3,7 +3,9 @@
     flex-direction: column;
     gap: 8em;
     padding: 8em;
-    max-width: 800em;
+    /* 缩小 max-width 避免横向溢出。根字号 3px 下 600em = 1800px，
+       与 rulesets/index.module.css 的列表页一致。 */
+    max-width: 600em;
     margin: 0 auto;
     width: 100%;
     height: 100%;
@@ -19,7 +21,7 @@
 
 .nameInput {
     flex: 1;
-    min-width: 160em;
+    min-width: 0;
 }
 
 .actions {
@@ -40,6 +42,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8em;
+    flex-wrap: wrap;
 }
 
 .optionRow {
@@ -48,6 +51,7 @@
     justify-content: space-between;
     gap: 8em;
     padding: 2em 4em;
+    flex-wrap: wrap;
 }
 
 .optionLabel {
@@ -59,16 +63,22 @@
     display: flex;
     align-items: center;
     gap: 4em;
+    flex-wrap: wrap;
 }
 
 .numInput {
+    /* 用 flex 适配 + max-width: 100% 避免固定宽度撑破容器 */
     width: 60em;
-    padding: 2em 4em;
+    max-width: 100%;
+    /* font-size 显式设置后，padding/border 的 em 会相对放大后的字号导致巨大。
+       减小 font-size 并用小 em 值，让 input 尺寸与 Button 协调。 */
+    padding: 0.5em 1em;
     background: var(--flow-dark);
     color: var(--ui);
-    border: 1em solid var(--ui-dark);
+    border: 0.3em solid var(--ui-dark);
     font-family: var(--font-gbc), sans-serif;
-    font-size: 14em;
+    font-size: 10em;
+    box-sizing: border-box;
 }
 
 .toggle {
@@ -101,7 +111,9 @@
 }
 
 .printName {
-    min-width: 120em;
+    /* 缩小 min-width 避免长名字固定宽度挤压其它字段。
+       根字号 3px 下 60em = 180px，足够显示多数卡名。 */
+    min-width: 60em;
     flex: 0 0 auto;
 }
 
@@ -116,26 +128,34 @@
     display: flex;
     align-items: center;
     gap: 2em;
+    flex-wrap: wrap;
 }
 
 .fieldInput {
     width: 40em;
-    padding: 1em 3em;
+    max-width: 100%;
+    padding: 0.4em 1em;
     background: var(--flow-dark);
     color: var(--ui);
-    border: 1em solid var(--ui-dark);
+    border: 0.3em solid var(--ui-dark);
     font-family: var(--font-gbc), sans-serif;
-    font-size: 12em;
+    font-size: 10em;
+    box-sizing: border-box;
 }
 
 .sigilInput {
-    width: 200em;
-    padding: 1em 3em;
+    /* 缩小 width 避免横向溢出。原 200em = 600px 撑破容器。
+       改为 flex: 1 自适应剩余空间，min-width 保证最小可读宽度。 */
+    flex: 1;
+    min-width: 80em;
+    max-width: 100%;
+    padding: 0.4em 1em;
     background: var(--flow-dark);
     color: var(--ui);
-    border: 1em solid var(--ui-dark);
+    border: 0.3em solid var(--ui-dark);
     font-family: var(--font-gbc), sans-serif;
-    font-size: 12em;
+    font-size: 10em;
+    box-sizing: border-box;
 }
 
 .printOverride {
@@ -163,5 +183,5 @@
 
 .filterInput {
     flex: 1;
-    min-width: 120em;
+    min-width: 0;
 }

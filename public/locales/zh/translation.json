@@ -75,10 +75,10 @@
         "emptyDeck": "牌组中没有卡牌，在右侧选择卡牌添加",
         "sideDeckLabel": "副牌组：",
         "validation": {
-            "deckSizeMin": "主牌组至少需要 {{n}} 张卡",
-            "rareLimit": "稀有卡在主牌组中限 1 张",
-            "maxCommonsMain": "每张普通卡在主牌组中限 {{n}} 张",
-            "maxCommonsSide": "每张普通卡在副牌组中限 {{n}} 张"
+            "deckSizeMin": "主牌组至少需要 {{min}} 张卡（当前 {{current}} 张）",
+            "rareLimit": "{{name}}（稀有）最多 1 张（当前 {{current}} 张）",
+            "maxCommonsMain": "{{name}} 最多 {{max}} 张（当前 {{current}} 张）",
+            "maxCommonsSide": "副牌组 {{name}} 最多 {{max}} 张（当前 {{current}} 张）"
         }
     },
     "rulesets": {

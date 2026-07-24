@@ -143,7 +143,10 @@ export default function Filters() {
         </svg>
         <div style={{
             pointerEvents: 'none',
-            position: 'absolute',
+            /* fixed 让扫描线覆盖整个视口，即使内容超出视口需要滚动也能铺满可见区域。
+               原来用 absolute + inset: 0，只覆盖最近 positioned 祖先（.play，高 100vh），
+               当 Settings/规则集编辑器等内容超出视口时，下方滚动区无扫描线。 */
+            position: 'fixed',
             inset: 0,
             backgroundImage: 'linear-gradient(to bottom, rgba(0, 0, 0, .1) 50%, transparent 60%)',
             backgroundSize: '100% 2em',

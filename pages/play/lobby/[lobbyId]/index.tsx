@@ -9,11 +9,45 @@ import { Button } from '@/components/inputs/Button';
 import { useEffect, useMemo, useRef } from 'react';
 import { pusherClient } from '@/lib/pusher';
 import { defaultFightOptions, zFightOptions } from '@/lib/online/z';
-import { stringify } from 'yaml';
+import type { FightOptions } from '@/lib/engine/Fight';
 import { FightSide } from '@/lib/engine/Fight';
 import { rulesets, userRulesetKey } from '@/lib/defs/prints';
 import { entries } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+
+/**
+ * 大厅中 FightOptions 的紧凑只读展示。
+ * 用 i18n 翻译每个属性名，替代原来的 YAML dump（既遮挡下拉框又未汉化）。
+ */
+const OPTION_LABELS: { key: keyof Omit<FightOptions, 'ruleset'>; labelKey: string }[] = [
+    { key: 'lanes', labelKey: 'rulesets.opt.lanes' },
+    { key: 'lives', labelKey: 'rulesets.opt.lives' },
+    { key: 'startingHand', labelKey: 'rulesets.opt.startingHand' },
+    { key: 'hammersPerTurn', labelKey: 'rulesets.opt.hammersPerTurn' },
+    { key: 'antLimit', labelKey: 'rulesets.opt.antLimit' },
+    { key: 'maxEnergy', labelKey: 'rulesets.opt.maxEnergy' },
+    { key: 'numCandles', labelKey: 'rulesets.opt.numCandles' },
+    { key: 'startingBones', labelKey: 'rulesets.opt.startingBones' },
+    { key: 'deckSizeMin', labelKey: 'rulesets.opt.deckSizeMin' },
+    { key: 'maxCommonsMain', labelKey: 'rulesets.opt.maxCommonsMain' },
+    { key: 'maxCommonsSide', labelKey: 'rulesets.opt.maxCommonsSide' },
+    { key: 'variableAttackNerf', labelKey: 'rulesets.opt.variableAttackNerf' },
+    { key: 'optActives', labelKey: 'rulesets.opt.optActives' },
+    { key: 'allowSnuffingCandles', labelKey: 'rulesets.opt.allowSnuffingCandles' },
+];
+
+function LobbyOptions({ opts, t }: { opts: FightOptions, t: ReturnType<typeof useTranslation>['t'] }) {
+    return <div className={styles.optionGrid}>
+        {OPTION_LABELS.map(({ key, labelKey }) => {
+            const val = opts[key];
+            const display = typeof val === 'boolean' ? (val ? t('common.on') : t('common.off')) : String(val);
+            return <div key={key} className={styles.optionItem}>
+                <Text size={10} className={styles.optionName}>{t(labelKey)}</Text>
+                <Text size={10} className={styles.optionVal}>{display}</Text>
+            </div>;
+        })}
+    </div>;
+}
 
 export default function Lobby() {
     const { t } = useTranslation();
@@ -71,9 +105,9 @@ export default function Lobby() {
     // 内置 + 用户 rulesets 的选项列表
     const rulesetOptions = useMemo(() => {
         const builtin = entries(rulesets).map(([id, r]) => [id, r.name] as [string, string]);
-        const user = (userRulesets.data ?? []).map(r => [userRulesetKey(r.id), `${r.name} (custom)`] as [string, string]);
+        const user = (userRulesets.data ?? []).map(r => [userRulesetKey(r.id), `${r.name}${t('rulesets.customSuffix')}`] as [string, string]);
         return [...builtin, ...user];
-    }, [userRulesets.data]);
+    }, [userRulesets.data, t]);
 
     const changeOptions = trpc.lobbies.changeOptions.useMutation({ onSuccess: () => lobby.refetch() });
     const onSelectRuleset = (id: string) => {
@@ -154,7 +188,7 @@ export default function Lobby() {
                     value={currentRuleset}
                     onSelect={onSelectRuleset}
                 /> : <Text>{rulesets[currentRuleset]?.name ?? currentRuleset}</Text>}
-                <Text size={10}>{stringify(lobbyOptions)}</Text>
+                <LobbyOptions opts={lobbyOptions} t={t} />
                 {isOwner && <>
                     <Button
                         disabled={deleteLobby.isPending}

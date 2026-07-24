@@ -35,7 +35,8 @@
     background: var(--flow-dark);
     color: var(--ui);
     font-family: var(--font-gbc), sans-serif;
-    font-size: 12em;
+    /* 不显式设 font-size：让 em 单位相对继承的根字号（.play 的 0.1875em），
+       与 Button 等其它组件一致。否则 padding/border 会相对放大后的字号导致按钮巨大。 */
 }
 
 .themeBtn.active {
