@@ -1,4 +1,4 @@
-import { FIGHT_SIDES, Fight, FightSide } from './Fight';
+import { FIGHT_SIDES, Fight, FightOptions, FightSide } from './Fight';
 import { positions } from './utils';
 import { Sigil, SigilParamMap, sigilInfos } from '../defs/sigils';
 import { buffs } from '../defs/buffs';
@@ -41,6 +41,40 @@ export interface SideDeck {
     singleCat?: Record<string, [number, string]>;
     /** draft 格式：从卡池中选 count 张。对齐 Godot `{ type: "draft", cards: [...], count }`。 */
     draft?: { cards: string[]; count: number };
+}
+
+/**
+ * Phase 3 UGC：用户自定义规则集的覆盖数据（存数据库 Ruleset.data 列）。
+ * 运行时通过 getMergedRuleset(baseId, data) 与内置 ruleset 深度合并。
+ *
+ * 设计原则：
+ * - 用户只能 fork 自内置 ruleset 并覆盖部分字段，不能从零创建（避免引用不存在的 sigil ID）。
+ * - `options.ruleset` 由 baseRuleset 强制决定，override 中传入会被忽略。
+ * - `prints` 对已有 id 深度合并（Partial）；新增 id 必须含 name/health/power。
+ * - `sideDecks`/`sigilParams` 整体替换某个 id（不深度合并，因为结构简单）。
+ *
+ * 类型说明：
+ * - `prints.sigils` 用 `string[]` 而非 `Sigil[]`，因为 Zod schema 用 `z.array(z.string())` 校验，
+ *   运行时合法性由 zUserRulesetData 的 superRefine 检查（sigil id 必须存在于 SIGIL_INFOS）。
+ * - `sigilParams` 值用 `(string|number)[]` 对齐 SigilParamMap 的值类型。
+ *
+ * 校验在 lib/defs/prints.ts 的 validateRuleset 中进行（复用内置 ruleset 的校验逻辑）。
+ */
+export interface UserRulesetData {
+    /** 覆盖 FightOptions 字段（ruleset 字段会被强制设为 baseRuleset id，忽略此处的 ruleset）。 */
+    options?: Partial<Omit<FightOptions, 'ruleset'>>;
+    /**
+     * 覆盖/新增 print。对已有 print 深度合并；新增 print 必须含 name/health/power。
+     * sigils/traits 用 string[] 而非 Sigil[]/Trait[]，因为：
+     * - Zod schema 用 z.array(z.string()) 校验
+     * - Trait 当前是 never（TRAIT_INFOS 为空），无法接受任何值
+     * - 运行时合法性由 zUserRulesetData 的 superRefine 检查（sigil id 必须存在于 SIGIL_INFOS）
+     */
+    prints?: Record<string, Partial<Omit<CardPrint, 'sigils' | 'traits'>> & { sigils?: string[]; traits?: string[] }>;
+    /** 覆盖/新增 sideDeck（整体替换某个 id，不深度合并）。 */
+    sideDecks?: Record<string, SideDeck>;
+    /** 覆盖/新增 sigilParams（整体替换某个 sigil 的参数）。 */
+    sigilParams?: Record<string, (string | number)[]>;
 }
 
 /**

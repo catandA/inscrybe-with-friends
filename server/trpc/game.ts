@@ -14,6 +14,46 @@ import { Prisma } from '@prisma/client';
 import { triggerFightPacket, triggerGameEnd, triggerLobbyGameStart, triggerLobbyRefetch } from '../pusher';
 import { LogContext, logger } from '../logger';
 import { randomUUID } from 'crypto';
+import {
+    getMergedRuleset,
+    isRegisteredRuleset,
+    isUserRulesetKey,
+    extractUserRulesetId,
+    registerRuleset,
+    userRulesetKey,
+} from '@/lib/defs/prints';
+import type { UserRulesetData } from '@/lib/engine/Card';
+
+/**
+ * Phase 3.4：确保用户 ruleset 已注册到运行时 rulesets map。
+ *
+ * 如果 host.fight.opts.ruleset 是 `user:UUID` 格式且尚未注册，
+ * 从 DB 读取用户 ruleset 数据，与 base 合并后注册。
+ *
+ * 需在以下场景调用：
+ * - 游戏开始时（start handler，createFight 之前）
+ * - 从 Redis 恢复 host 后（actionMessage / responseMessage，newTick 之前）
+ *
+ * 服务器重启后运行时注册会丢失，此函数保证恢复时重新注册。
+ */
+async function ensureRulesetRegistered(rulesetKey: string): Promise<void> {
+    if (!isUserRulesetKey(rulesetKey)) return;
+    if (isRegisteredRuleset(rulesetKey)) return;
+
+    const rulesetId = extractUserRulesetId(rulesetKey);
+    const userRuleset = await prisma.ruleset.findFirst({ where: { id: rulesetId } });
+    if (!userRuleset) {
+        throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: `User ruleset ${rulesetId} not found`,
+        });
+    }
+
+    const override = (userRuleset.data as UserRulesetData) ?? {};
+    const merged = getMergedRuleset(userRuleset.baseRuleset, override, userRuleset.name);
+    registerRuleset(rulesetKey, merged);
+    logger.debug('Registered user ruleset', { rulesetId, syntheticKey: rulesetKey });
+}
 
 const newTick = (host: FightHost, ctx?: LogContext) => {
     // 从持久化的 rngState 重建 RNG，保证跨多次 action 的随机序列连续。
@@ -152,6 +192,12 @@ export const gameRouter = router({
             try {
                 const changedFightOptions = zFightOptions.partial().parse(lobby.options);
                 const fightOptions = { ...defaultFightOptions(changedFightOptions.ruleset), ...changedFightOptions };
+
+                // Phase 3.4：如果使用用户 ruleset，确保已注册到运行时 rulesets map
+                if (changedFightOptions.ruleset) {
+                    await ensureRulesetRegistered(changedFightOptions.ruleset);
+                }
+
                 const fight = createFight(fightOptions, ['player', 'opposing'], {
                     player: zDeckCards.parse(playerDeck.cards),
                     opposing: zDeckCards.parse(opposingDeck.cards),
@@ -206,6 +252,9 @@ export const gameRouter = router({
         .mutation(async ({ ctx, input }) => {
             const host = await kv.getHost(input.gameId);
             if (!host) throw new TRPCError({ code: 'NOT_FOUND', message: 'Game not found' });
+
+            // Phase 3.4：恢复 host 后确保用户 ruleset 已注册（服务器可能重启过）
+            await ensureRulesetRegistered(host.fight.opts.ruleset);
 
             await upConcurrency(`game-action:${input.gameId}`, 1, () => { throw new TRPCError({
                 code: 'BAD_REQUEST',

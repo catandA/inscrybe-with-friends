@@ -6,11 +6,13 @@ import { Box } from '@/components/ui/Box';
 import Image from 'next/image';
 import { Select } from '@/components/inputs/Select';
 import { Button } from '@/components/inputs/Button';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { pusherClient } from '@/lib/pusher';
 import { defaultFightOptions, zFightOptions } from '@/lib/online/z';
 import { stringify } from 'yaml';
 import { FightSide } from '@/lib/engine/Fight';
+import { rulesets, userRulesetKey } from '@/lib/defs/prints';
+import { entries } from '@/lib/utils';
 
 export default function Lobby() {
     const router = useRouter();
@@ -43,7 +45,32 @@ export default function Lobby() {
         refetchOnWindowFocus: false,
     });
 
+    // Phase 3.4：拉取用户 rulesets，让 owner 可在 lobby 选择自定义 ruleset
+    const userRulesets = trpc.rulesets.list.useQuery(void 0, {
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+    });
+
     const hasGame = !!(!pending && lobby.data?.gameId);
+
+    // 解析当前 lobby 的 ruleset（内置直接返回，用户 ruleset 用 synthetic key）
+    const lobbyOptions = useMemo(() => (
+        Object.assign(defaultFightOptions(), zFightOptions.partial().parse(lobby.data?.options ?? {}))
+    ), [lobby.data?.options]);
+    const currentRuleset = lobbyOptions.ruleset;
+
+    // 内置 + 用户 rulesets 的选项列表
+    const rulesetOptions = useMemo(() => {
+        const builtin = entries(rulesets).map(([id, r]) => [id, r.name] as [string, string]);
+        const user = (userRulesets.data ?? []).map(r => [userRulesetKey(r.id), `${r.name} (custom)`] as [string, string]);
+        return [...builtin, ...user];
+    }, [userRulesets.data]);
+
+    const changeOptions = trpc.lobbies.changeOptions.useMutation({ onSuccess: () => lobby.refetch() });
+    const onSelectRuleset = (id: string) => {
+        if (id === currentRuleset) return;
+        changeOptions.mutate({ id: lobbyId, options: { ruleset: id } });
+    };
 
     const canStartGame = !pending && player && opposing && player !== opposing
         && lobby.data?.decks && lobby.data.decks[`${player.userId}`] && lobby.data.decks[`${opposing.userId}`];
@@ -104,7 +131,16 @@ export default function Lobby() {
             <Box>
                 <Text size={12}>Lobby</Text>
                 {/* TODO: Lobby settings editor */}
-                <Text>{stringify(Object.assign(defaultFightOptions(), zFightOptions.partial().parse(lobby.data.options)))}</Text>
+                <Text size={11}>Ruleset</Text>
+                {isOwner && !hasGame ? <Select
+                    options={rulesetOptions}
+                    className={styles.select}
+                    placeholder="Select Ruleset"
+                    disabled={changeOptions.isPending || userRulesets.isLoading}
+                    value={currentRuleset}
+                    onSelect={onSelectRuleset}
+                /> : <Text>{rulesets[currentRuleset]?.name ?? currentRuleset}</Text>}
+                <Text size={10}>{stringify(lobbyOptions)}</Text>
                 {isOwner && <>
                     <Button
                         disabled={deleteLobby.isPending}

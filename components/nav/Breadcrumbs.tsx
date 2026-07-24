@@ -29,6 +29,10 @@ const rootParts: Partial<Record<string, Part>> = {
             'edit-decks': {
                 name: 'Edit Decks',
             },
+            rulesets: {
+                name: 'Rulesets',
+                params: 1,
+            },
         },
     },
 };

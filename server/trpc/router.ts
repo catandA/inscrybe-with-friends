@@ -4,6 +4,7 @@ import { lobbiesRouter } from './lobbies';
 import { userRouter } from './users';
 import { pusherRouter } from './pusher';
 import { gameRouter } from './game';
+import { rulesetsRouter } from './rulesets';
 
 
 export const trpcRouter = router({
@@ -12,6 +13,7 @@ export const trpcRouter = router({
     user: userRouter,
     pusher: pusherRouter,
     game: gameRouter,
+    rulesets: rulesetsRouter,
 });
 
 export type AppRouter = typeof trpcRouter;

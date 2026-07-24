@@ -4,6 +4,8 @@ export type LogContext = Partial<{
     gameId: string;
     lobbyId: string;
     userId: string;
+    rulesetId: string;
+    syntheticKey: string;
 }>;
 export type LogEvent = {
     message: string;

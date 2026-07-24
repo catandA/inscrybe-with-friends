@@ -1,4 +1,4 @@
-import { CardPrint, Ruleset, SideDeck } from '../engine/Card';
+import { CardPrint, Ruleset, SideDeck, UserRulesetData } from '../engine/Card';
 import { MoxType } from '../engine/constants';
 import { sigilInfos } from './sigils';
 
@@ -1232,8 +1232,52 @@ const RULESETS = {
 
 export const rulesets: Record<string, Ruleset> = RULESETS;
 
-// Check validity of references & fill in defaults
-for (const [ruleset, { prints, sideDecks, sigilParams }] of Object.entries(rulesets)) {
+/**
+ * Phase 3.4：运行时注册用户自定义 ruleset。
+ *
+ * 用户 ruleset 在游戏开始时通过 getMergedRuleset 合并后，注册到此 map 中，
+ * 使引擎的 `rulesets[opts.ruleset]` 查找能正常工作。
+ *
+ * synthetic key 格式：`user:${rulesetId}`（rulesetId 是 DB 的 UUID）。
+ * 注册是幂等的（重复注册同一 key 会覆盖）。
+ *
+ * 注意：服务器重启后注册会丢失。游戏恢复时需在 game.ts 的 getHost 后重新注册。
+ */
+export function registerRuleset(key: string, ruleset: Ruleset): void {
+    rulesets[key] = ruleset;
+}
+
+/** 判断 rulesetId 是否为已注册的 ruleset（内置或用户注册的）。 */
+export function isRegisteredRuleset(id: string): boolean {
+    return id in rulesets;
+}
+
+/** 用户 ruleset synthetic key 前缀。 */
+export const USER_RULESET_PREFIX = 'user:';
+
+/** 生成用户 ruleset 的 synthetic key。 */
+export function userRulesetKey(rulesetId: string): string {
+    return `${USER_RULESET_PREFIX}${rulesetId}`;
+}
+
+/** 判断 rulesetId 是否为用户 ruleset synthetic key。 */
+export function isUserRulesetKey(id: string): boolean {
+    return id.startsWith(USER_RULESET_PREFIX);
+}
+
+/** 从 synthetic key 提取用户 ruleset UUID。 */
+export function extractUserRulesetId(key: string): string {
+    return key.slice(USER_RULESET_PREFIX.length);
+}
+
+/**
+ * 校验一个 ruleset 的内部引用合法性，并填充默认字段（portrait/face/frame）。
+ * 内置 rulesets 在模块加载时调用；用户 ruleset 通过 getMergedRuleset 调用。
+ *
+ * 抛出 Error 时表示 ruleset 数据非法（开发期 bug 或用户数据被破坏）。
+ */
+function validateRuleset(name: string, ruleset: Ruleset): void {
+    const { prints, sideDecks, sigilParams } = ruleset;
     for (const [id, card] of Object.entries(prints) as [string, CardPrint][]) {
         if (card.evolution && !Object.hasOwn(prints, card.evolution))
             throw new Error(`Card ${card.name} references invalid evolution ${card.evolution}`);
@@ -1262,9 +1306,62 @@ for (const [ruleset, { prints, sideDecks, sigilParams }] of Object.entries(rules
         }
     }
     for (const [sigil, params] of Object.entries(sigilParams)) {
+        const sigilInfo = sigilInfos[sigil];
+        if (!sigilInfo) throw new Error(`Ruleset ${name} references unknown sigil ${sigil}`);
         for (let i = 0; i < params.length; i++) {
-            if (sigilInfos[sigil].params?.[i] === 'print' && !prints[params[i]])
-                throw new Error(`Params for ${sigil} in ${ruleset} references invalid print ${params[i]}`);
+            if (sigilInfo.params?.[i] === 'print' && !prints[params[i]])
+                throw new Error(`Params for ${sigil} in ${name} references invalid print ${params[i]}`);
         }
     }
+}
+
+// Check validity of references & fill in defaults for built-in rulesets
+for (const [ruleset, data] of Object.entries(rulesets)) {
+    validateRuleset(ruleset, data);
+}
+
+/**
+ * Phase 3 UGC：将用户 override 数据与内置 base ruleset 深度合并，返回可用的 Ruleset。
+ *
+ * 合并规则：
+ * - prints：对已有 id 深度合并（Partial<CardPrint>）；新增 id 直接加入（必须完整 CardPrint）。
+ * - sideDecks/sigilParams：整体替换某 id（不深度合并）。
+ * - options 不在此函数处理范围——FightOptions 是独立概念，由 getMergedFightOptions 处理。
+ *
+ * 校验：合并后调用 validateRuleset 检查所有引用合法性（evolution/sideDeck/sigilParams 引用的 print 必须存在）。
+ * 校验失败时抛 Error，调用方（tRPC handler）应 catch 并返回 400。
+ */
+export function getMergedRuleset(baseId: string, override: UserRulesetData, name?: string): Ruleset {
+    const base = rulesets[baseId];
+    if (!base) throw new Error(`Unknown base ruleset: ${baseId}`);
+
+    // 深度合并 prints：对已有 id 覆盖字段，新增 id 直接加入
+    // 注意：override.prints 的 sigils 是 string[]（Zod schema 限制），合并时 cast 为 Sigil[]
+    const mergedPrints: Record<string, CardPrint> = { ...base.prints };
+    if (override.prints) {
+        for (const [id, partial] of Object.entries(override.prints)) {
+            const existing = mergedPrints[id];
+            if (existing) {
+                // 深度合并：覆盖指定字段，未指定的保留 base
+                mergedPrints[id] = { ...existing, ...partial } as CardPrint;
+            } else {
+                // 新增 print：必须含必要字段（由 tRPC 层的 zUserRulesetData Zod schema 保证类型）
+                mergedPrints[id] = { ...partial } as CardPrint;
+            }
+        }
+    }
+
+    // sideDecks/sigilParams：整体覆盖某 id
+    const mergedSideDecks: Record<string, SideDeck> = { ...base.sideDecks, ...override.sideDecks };
+    const mergedSigilParams: Record<string, (string | number)[]> = { ...base.sigilParams, ...override.sigilParams };
+
+    const merged: Ruleset = {
+        name: name ?? base.name,
+        prints: mergedPrints,
+        sideDecks: mergedSideDecks,
+        sigilParams: mergedSigilParams,
+    };
+
+    validateRuleset(baseId, merged);
+    return merged;
 }

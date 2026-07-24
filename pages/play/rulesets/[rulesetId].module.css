@@ -1,0 +1,167 @@
+.editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8em;
+    padding: 8em;
+    max-width: 800em;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 8em;
+    flex-wrap: wrap;
+}
+
+.nameInput {
+    flex: 1;
+    min-width: 160em;
+}
+
+.actions {
+    display: flex;
+    gap: 4em;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 4em;
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8em;
+}
+
+.optionRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8em;
+    padding: 2em 4em;
+}
+
+.optionLabel {
+    flex: 1;
+    min-width: 0;
+}
+
+.optionValue {
+    display: flex;
+    align-items: center;
+    gap: 4em;
+}
+
+.numInput {
+    width: 60em;
+    padding: 2em 4em;
+    background: var(--flow-dark);
+    color: var(--ui);
+    border: 1em solid var(--ui-dark);
+    font-family: var(--font-gbc), sans-serif;
+    font-size: 14em;
+}
+
+.toggle {
+    cursor: pointer;
+    padding: 2em 6em;
+    min-width: 50em;
+    text-align: center;
+}
+
+.toggle.on {
+    background: var(--emerald-dark);
+}
+
+.toggle.off {
+    background: var(--blood-dark);
+}
+
+.printList {
+    display: flex;
+    flex-direction: column;
+    gap: 2em;
+}
+
+.printRow {
+    display: flex;
+    align-items: center;
+    gap: 4em;
+    padding: 2em 4em;
+    flex-wrap: wrap;
+}
+
+.printName {
+    min-width: 120em;
+    flex: 0 0 auto;
+}
+
+.printFields {
+    display: flex;
+    gap: 4em;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.printField {
+    display: flex;
+    align-items: center;
+    gap: 2em;
+}
+
+.fieldInput {
+    width: 40em;
+    padding: 1em 3em;
+    background: var(--flow-dark);
+    color: var(--ui);
+    border: 1em solid var(--ui-dark);
+    font-family: var(--font-gbc), sans-serif;
+    font-size: 12em;
+}
+
+.sigilInput {
+    width: 200em;
+    padding: 1em 3em;
+    background: var(--flow-dark);
+    color: var(--ui);
+    border: 1em solid var(--ui-dark);
+    font-family: var(--font-gbc), sans-serif;
+    font-size: 12em;
+}
+
+.printOverride {
+    opacity: 0.85;
+}
+
+.printOverride.modified {
+    border-left: 2em solid var(--emerald);
+}
+
+.error {
+    color: #ff6b6b;
+}
+
+.success {
+    color: var(--emerald);
+}
+
+.filterRow {
+    display: flex;
+    gap: 4em;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filterInput {
+    flex: 1;
+    min-width: 120em;
+}

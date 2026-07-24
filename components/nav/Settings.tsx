@@ -9,6 +9,9 @@ import { Text } from '../ui/Text';
 import { Range } from '../inputs/Range';
 import { Button } from '../inputs/Button';
 import { useShallow } from 'zustand/shallow';
+import { trpc } from '@/lib/trpc';
+import { PRESET_THEMES, applyTheme, type Theme } from '@/lib/themes';
+import { entries } from '@/lib/utils';
 
 const DISCORD_LINK = 'https://discord.gg/me2Me5ztMz';
 
@@ -30,6 +33,7 @@ export function Settings() {
                 <VolumeSetting type="all" />
                 <VolumeSetting type="music" />
                 <VolumeSetting type="sfx" />
+                <ThemeSetting />
                 <a className={styles.discordLink} href={DISCORD_LINK} target="_blank">
                     <Button className={styles.discordButton} border="--discord-dark"><Text>Join Discord</Text></Button>
                 </a>
@@ -54,5 +58,56 @@ function VolumeSetting({ type }: { type: VolumeType }) {
     return <div className={styles.group}>
         <Text size={16}>{volumeLabel[type]}</Text>
         <Range min={0} max={1} steps={10} value={volume} onChange={onChange} type="sound" />
+    </div>;
+}
+
+/**
+ * Phase 3.3 主题选择器。
+ * 列出预设主题，点击立即预览 + 保存到 DB。
+ */
+function ThemeSetting() {
+    const user = trpc.user.getUser.useQuery(void 0, {
+        refetchOnWindowFocus: false,
+    });
+    const setTheme = trpc.user.setTheme.useMutation();
+
+    // 当前激活的预设 id：从 user.theme 反查匹配哪个预设
+    const currentPresetId = (() => {
+        const userTheme = user.data?.theme as Theme | null | undefined;
+        if (!userTheme || Object.keys(userTheme).length === 0) return 'default';
+        // 反查：找到 vars 完全匹配的预设
+        for (const [id, preset] of entries(PRESET_THEMES)) {
+            if (id === 'default') continue;
+            const presetVars = preset.vars;
+            const presetKeys = Object.keys(presetVars);
+            if (presetKeys.length === Object.keys(userTheme).length &&
+                presetKeys.every(k => userTheme[k] === presetVars[k])) {
+                return id;
+            }
+        }
+        return null; // 自定义主题（不匹配任何预设）
+    })();
+
+    const onPickPreset = (id: keyof typeof PRESET_THEMES) => {
+        const vars = PRESET_THEMES[id].vars;
+        const theme = id === 'default' ? null : { ...vars };
+        applyTheme(theme as Theme | null);
+        setTheme.mutate({ theme });
+    };
+
+    return <div className={styles.group}>
+        <Text size={16}>THEME</Text>
+        <div className={styles.themeRow}>
+            {entries(PRESET_THEMES).map(([id, preset]) => (
+                <div
+                    key={id}
+                    className={`${styles.themeBtn} ${currentPresetId === id ? styles.active : ''}`}
+                    onClick={() => onPickPreset(id)}
+                >
+                    <Text size={12}>{preset.name}</Text>
+                </div>
+            ))}
+        </div>
+        {setTheme.error && <Text size={10} className={styles.error}>{setTheme.error.message}</Text>}
     </div>;
 }

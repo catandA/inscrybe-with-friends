@@ -1,8 +1,10 @@
 import styles from './edit-decks.module.css';
-import { rulesets } from '@/lib/defs/prints';
+import { rulesets, userRulesetKey } from '@/lib/defs/prints';
 import { entries } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isCardsDirty, useDeckSync } from '@/hooks/useDeckStore';
+import { useResolvedRuleset } from '@/hooks/useResolvedRuleset';
+import { trpc } from '@/lib/trpc';
 import { PrintList } from '@/components/ui/PrintList';
 import { AssetButton } from '@/components/inputs/AssetButton';
 import { Select } from '@/components/inputs/Select';
@@ -12,6 +14,7 @@ import { getSideDeckPrintIds } from '@/lib/engine/Card';
 import { Box } from '@/components/ui/Box';
 import { DeckCards } from '@/lib/engine/Deck';
 import { defaultFightOptions } from '@/lib/online/z';
+import type { Ruleset } from '@/lib/engine/Card';
 
 function useDeck(init: DeckCards) {
     const [deck, setDeck] = useState(init);
@@ -28,11 +31,18 @@ function useDeck(init: DeckCards) {
  * - 非 rare 卡主牌组每张上限 opts.maxCommonsMain
  * - 非 rare 卡副牌组每张上限 opts.maxCommonsSide
  * noHammer 是服务端锤子守卫（Tick.ts），UI 端不校验，仅在卡牌渲染时显示标记（待办）。
+ *
+ * Phase 3.4：支持用户 ruleset，prints 和 opts 从 merged ruleset 解析。
  */
-function validateDeck(deck: DeckCards, rulesetId: string): { isValid: boolean; errors: string[] } {
-    const prints = rulesets[rulesetId].prints;
-    const opts = defaultFightOptions(rulesetId);
+function validateDeck(deck: DeckCards, rulesetId: string, resolvedRuleset: Ruleset | null): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
+
+    if (!resolvedRuleset) {
+        return { isValid: false, errors: ['Ruleset is loading...'] };
+    }
+
+    const opts = defaultFightOptions(rulesetId);
+    const prints = resolvedRuleset.prints;
 
     if (deck.main.length < opts.deckSizeMin) {
         errors.push(`主牌组至少需要 ${opts.deckSizeMin} 张卡（当前 ${deck.main.length} 张）`);
@@ -71,12 +81,30 @@ export default function EditDecks() {
     const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
     const [deckNameInput, setDeckName] = useState('');
     const [selectedRuleset, setSelectedRuleset] = useState(Object.keys(rulesets)[0]);
-    // TODO: unpair side-decks from rulesets, (add 'custom' option for when side deck isnt part of ruleset)
-    const [defaultSideDeckId, defaultSideDeck] = Object.entries(rulesets[selectedRuleset].sideDecks)[0];
-    const [selectedSideDeck, setSelectedSideDeck] = useState(defaultSideDeckId);
+    const [selectedSideDeck, setSelectedSideDeck] = useState('');
+
+    // Phase 3.4：拉取用户 rulesets 列表，与内置 rulesets 合并显示
+    const userRulesets = trpc.rulesets.list.useQuery(void 0, {
+        refetchOnWindowFocus: false,
+    });
+
+    // 解析当前选中的 ruleset（内置直接返回，用户 ruleset 从 DB 合并）
+    const resolvedRuleset = useResolvedRuleset(selectedRuleset);
+
+    // 内置 + 用户 rulesets 的选项列表
+    const rulesetOptions = useMemo(() => {
+        const builtin = entries(rulesets).map(([id, r]) => [id, r.name] as [string, string]);
+        const user = (userRulesets.data ?? []).map(r => [userRulesetKey(r.id), `${r.name} (custom)`] as [string, string]);
+        return [...builtin, ...user];
+    }, [userRulesets.data]);
+
+    // 当前 resolved ruleset 的 sideDecks
+    const sideDecks = resolvedRuleset?.sideDecks ?? {};
+    const sideEntries = entries(sideDecks);
+
     const [deck, { addCard, removeCard, setSide, setDeck }] = useDeck({
         main: [],
-        side: getSideDeckPrintIds(defaultSideDeck),
+        side: [],
     });
     const {
         decks,
@@ -87,6 +115,18 @@ export default function EditDecks() {
         isSaving,
         errorSaving,
     } = useDeckSync();
+
+    // 当 resolved ruleset 加载完成且 selectedSideDeck 为空时，自动选第一个 side deck
+    useEffect(() => {
+        if (!resolvedRuleset) return;
+        if (!selectedSideDeck || !sideDecks[selectedSideDeck]) {
+            const firstId = Object.keys(sideDecks)[0];
+            if (firstId) {
+                setSelectedSideDeck(firstId);
+                setSide(getSideDeckPrintIds(sideDecks[firstId]));
+            }
+        }
+    }, [resolvedRuleset, selectedSideDeck, sideDecks]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const deckName = deckNameInput.trim();
     const hasDeckSelected = !!(selectedDeckId && decks[selectedDeckId]);
@@ -101,7 +141,7 @@ export default function EditDecks() {
     const canMakeNew = !isDirty;
 
     // 牌组合法性校验（deckSizeMin / rare 限 1 / commons 上限）。非法时阻止保存。
-    const validation = useMemo(() => validateDeck(deck, selectedRuleset), [deck, selectedRuleset]);
+    const validation = useMemo(() => validateDeck(deck, selectedRuleset, resolvedRuleset), [deck, selectedRuleset, resolvedRuleset]);
     const canSave = isDirty && validation.isValid;
 
     useEffect(() => {
@@ -134,10 +174,10 @@ export default function EditDecks() {
         let deckToCreate = deck;
         let deckNameToCreate = deckName;
         if (hasDeckSelected) {
-            const defaultSideDeck = Object.keys(rulesets[selectedRuleset].sideDecks)[0];
-            deckToCreate = { main: [], side: getSideDeckPrintIds(rulesets[selectedRuleset].sideDecks[defaultSideDeck]) };
+            const firstSideDeck = Object.keys(sideDecks)[0];
+            deckToCreate = { main: [], side: firstSideDeck ? getSideDeckPrintIds(sideDecks[firstSideDeck]) : [] };
             setDeck(deckToCreate);
-            setSelectedSideDeck(defaultSideDeck);
+            setSelectedSideDeck(firstSideDeck ?? '');
             deckNameToCreate = '';
         }
 
@@ -169,7 +209,8 @@ export default function EditDecks() {
     };
     const onDeleteDeck = (id: string) => {
         if (id === selectedDeckId) {
-            setDeck({ main: [], side: getSideDeckPrintIds(defaultSideDeck) });
+            const firstSideDeck = Object.keys(sideDecks)[0];
+            setDeck({ main: [], side: firstSideDeck ? getSideDeckPrintIds(sideDecks[firstSideDeck]) : [] });
             setSelectedDeckId(null);
             setDeckName('');
         }
@@ -177,10 +218,10 @@ export default function EditDecks() {
     };
     const onChangeRuleset = (id: string) => {
         if (id === selectedRuleset) return;
-        const defaultSideDeck = Object.keys(rulesets[id].sideDecks)[0];
         setSelectedRuleset(id);
-        setSelectedSideDeck(defaultSideDeck);
-        setDeck({ main: [], side: getSideDeckPrintIds(rulesets[id].sideDecks[defaultSideDeck]) });
+        // side deck 在 resolvedRuleset 加载后由 useEffect 自动设置
+        setSelectedSideDeck('');
+        setDeck({ main: [], side: [] });
         setDeckName('');
         setSelectedDeckId(null);
     };
@@ -188,14 +229,15 @@ export default function EditDecks() {
     /* eslint-disable react-hooks/exhaustive-deps */
     const onSideDeckSelect = useCallback((id: string) => {
         setSelectedSideDeck(id);
-        setSide(getSideDeckPrintIds(rulesets[selectedRuleset].sideDecks[id]));
-    }, []);
+        if (sideDecks[id]) {
+            setSide(getSideDeckPrintIds(sideDecks[id]));
+        }
+    }, [sideDecks]);
     const onPrintSelect = useCallback((id: string) => addCard(id), []);
     const onDeckPrintSelect = useCallback((id: string, idx: number) => removeCard(idx), []);
     const onClearDeck = useCallback(() => setDeck(deck => ({ ...deck, main: [] })), []);
     /* eslint-enable react-hooks/exhaustive-deps */
 
-    const sideEntries = entries(rulesets[selectedRuleset].sideDecks);
     const deckEntries = entries(decks).sort(([, { name: a }], [, { name: b }]) => a.localeCompare(b));
 
     // TODO: figure out how to prevent deck select from flickering on create/rename
@@ -206,7 +248,7 @@ export default function EditDecks() {
                 <div className={styles.controlsRow}>
                     <Select
                         className={styles.select}
-                        options={entries(rulesets).map(([id, ruleset]) => [id, ruleset.name])}
+                        options={rulesetOptions}
                         value={selectedRuleset}
                         placeholder="Select Ruleset"
                         onSelect={id => onChangeRuleset(id)}

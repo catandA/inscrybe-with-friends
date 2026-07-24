@@ -19,6 +19,9 @@ model User {
     createdAt   DateTime @default(now())
     permissions Int      @default(0)
 
+    // Phase 3 主题系统：CSS 变量键值对（如 { "--bg-color": "#000" }）。null 表示用默认主题。
+    theme Json?
+
     connections Connection[]
 
     ownedLobbies    Lobby[]
@@ -28,6 +31,30 @@ model User {
     friends  User[] @relation("Friendship")
     friendOf User[] @relation("Friendship")
     decks    Deck[]
+    rulesets Ruleset[]
+}
+
+/// Phase 3 UGC：用户自定义规则集。
+/// `data` 存 UserRulesetData（options/prints/sideDecks/sigilParams 的 partial 覆盖），
+/// 运行时通过 getMergedRuleset(baseId, data) 与内置 ruleset 深度合并。
+/// `baseRuleset` 必须是内置 ruleset id（如 'imfComp'），由 z.ts 的 refine 校验。
+model Ruleset {
+    id        String    @id @default(uuid())
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    ownerId String
+    owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+    /// 内置 ruleset id（base），运行时合并 base + override。
+    baseRuleset String
+    name        String
+
+    /// ![PrismaJson.RulesetData]
+    data Json
+
+    @@unique([ownerId, name])
+    @@index([ownerId])
 }
 
 model Connection {

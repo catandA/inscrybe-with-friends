@@ -19,6 +19,32 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    gap: 4em;
+}
+
+.themeRow {
+    display: flex;
+    gap: 4em;
+    flex-wrap: wrap;
+}
+
+.themeBtn {
+    padding: 2em 4em;
+    cursor: pointer;
+    border: 1em solid var(--ui-dark);
+    background: var(--flow-dark);
+    color: var(--ui);
+    font-family: var(--font-gbc), sans-serif;
+    font-size: 12em;
+}
+
+.themeBtn.active {
+    border-color: var(--emerald);
+    background: var(--emerald-dark);
+}
+
+.error {
+    color: #ff6b6b;
 }
 
 .discordLink {

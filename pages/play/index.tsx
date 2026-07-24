@@ -54,5 +54,10 @@ export default function Play() {
                 <Text>{t('play.editDecks')}</Text>
             </Button>
         </Box>
+        <Box>
+            <Button onClick={() => router.push('/play/rulesets')}>
+                <Text>{t('play.rulesets', { defaultValue: 'Custom Rulesets' })}</Text>
+            </Button>
+        </Box>
     </div>;
 }
