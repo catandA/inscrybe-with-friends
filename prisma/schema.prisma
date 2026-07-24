@@ -121,6 +121,11 @@ model Game {
     // 默认空串以兼容历史数据；新游戏在 game.ts start handler 中显式赋值。
     seed    String  @default("")
 
+    // Phase 4 回放：游戏开始时的 FightOptions 和双方 decks，用于回放重建 fight。
+    // 默认 null 以兼容历史数据；新游戏在 start handler 中显式赋值。
+    opts  Json?
+    decks Json?
+
     createdAt DateTime  @default(now())
     endedAt   DateTime?
 

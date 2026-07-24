@@ -59,5 +59,10 @@ export default function Play() {
                 <Text>{t('play.rulesets', { defaultValue: 'Custom Rulesets' })}</Text>
             </Button>
         </Box>
+        <Box>
+            <Button onClick={() => router.push('/play/replays')}>
+                <Text>{t('play.replays', { defaultValue: 'Replays' })}</Text>
+            </Button>
+        </Box>
     </div>;
 }

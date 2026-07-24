@@ -1,6 +1,6 @@
 import styles from './game.module.css';
 import { useRouter } from 'next/router';
-import { trpc } from '@/lib/trpc';
+import { trpc, trpcProxy } from '@/lib/trpc';
 import { useEffect, useState } from 'react';
 import { useGameStore } from '@/hooks/useGameStore';
 import { useClientStore } from '@/hooks/useClientStore';
@@ -41,8 +41,6 @@ export default function Game() {
         const cloudGame = useGameStore.getState().getCloudGame(game.data.id, true);
         const willPlayInit = game.data.initPacket && !cloudGame.playedInit;
 
-        console.log('game.data', game.data, willPlayInit);
-
         let client = useClientStore.getState().clients[game.data.id];
         if (!client) {
             const fightData = clone(game.data.fight);
@@ -52,6 +50,24 @@ export default function Game() {
         }
 
         if (willPlayInit) useGameStore.getState().handleCloudPacket(game.data.id, game.data.initPacket!);
+
+        // Phase 4 断线重连：如果本地记录的 lastSeenPacketId 落后于服务端最新 packet，拉取错过的 packet。
+        // 场景：玩家关闭页面/掉线后重新进入游戏，期间对手的动作生成的 packet 未推送。
+        // 服务端 fight 状态权威（已通过 game.get 同步），但客户端需要补齐动画连续性。
+        const lastSeen = cloudGame.lastSeenPacketId;
+        if (lastSeen && game.data.lastPacketId && lastSeen !== game.data.lastPacketId) {
+            trpcProxy.game.getPacketsSince.query({
+                gameId: game.data.id,
+                afterPacketId: lastSeen,
+            }).then(result => {
+                for (const { id, packet } of result.packets) {
+                    useGameStore.getState().handleCloudPacket(game.data.id, packet);
+                    useGameStore.getState().markCloudPacketSeen(game.data.id, id);
+                }
+            }).catch(err => console.warn('Failed to fetch missed packets', err));
+        } else if (game.data.lastPacketId) {
+            useGameStore.getState().markCloudPacketSeen(game.data.id, game.data.lastPacketId);
+        }
 
         const unsubPackets = subscribeGamePacket(game.data.id, (packet) => {
             useGameStore.getState().handleCloudPacket(game.data.id, packet);

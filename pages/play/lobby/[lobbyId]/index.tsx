@@ -13,8 +13,10 @@ import { stringify } from 'yaml';
 import { FightSide } from '@/lib/engine/Fight';
 import { rulesets, userRulesetKey } from '@/lib/defs/prints';
 import { entries } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 export default function Lobby() {
+    const { t } = useTranslation();
     const router = useRouter();
     const lobbyId = router.query.lobbyId as string;
     const lobby = trpc.lobbies.get.useQuery({
@@ -52,6 +54,13 @@ export default function Lobby() {
     });
 
     const hasGame = !!(!pending && lobby.data?.gameId);
+
+    // Phase 4 观战模式：判断当前用户是否为游戏参与者。
+    // 非参与者点击 Enter Game 会被服务端 game.get 端点拒绝（FORBIDDEN），
+    // 因此在 UI 层提前区分：参与者显示 Enter Game，非参与者显示 Spectate Game。
+    const isGameParticipant = !pending && !!user.data && (
+        player?.userId === user.data.id || opposing?.userId === user.data.id
+    );
 
     // 解析当前 lobby 的 ruleset（内置直接返回，用户 ruleset 用 synthetic key）
     const lobbyOptions = useMemo(() => (
@@ -118,6 +127,11 @@ export default function Lobby() {
         router.push(`/play/lobby/${lobbyId}/game`);
     };
 
+    // Phase 4 观战模式：非游戏参与者可点击进入观战页面，只读观看对战。
+    const onSpectateGame = () => {
+        router.push(`/play/lobby/${lobbyId}/spectate`);
+    };
+
     const forfeitGame = trpc.game.forfeit.useMutation({ onSuccess: () => lobby.refetch() });
     const onForfeitGame = () => {
         if (!lobby.data) return;
@@ -176,15 +190,20 @@ export default function Lobby() {
                         onClick={onStartGame}
                     ><Text>Start Game</Text></Button>
                 )}
-                {hasGame && (
+                {hasGame && isGameParticipant && (
                     <Button
                         onClick={onEnterGame}
-                    ><Text>Enter Game</Text></Button>
+                    ><Text>{t('lobby.enterGame', { defaultValue: 'Enter Game' })}</Text></Button>
+                )}
+                {hasGame && !isGameParticipant && (
+                    <Button
+                        onClick={onSpectateGame}
+                    ><Text>{t('lobby.spectateGame', { defaultValue: 'Spectate Game' })}</Text></Button>
                 )}
                 {(isInGame && hasGame) && (
                     <Button
                         onClick={onForfeitGame}
-                    ><Text>Forfeit Game</Text></Button>
+                    ><Text>{t('lobby.forfeitGame', { defaultValue: 'Forfeit Game' })}</Text></Button>
                 )}
             </Box>
             <Box className={styles.playerPanel}>

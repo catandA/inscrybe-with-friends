@@ -17,9 +17,14 @@ export interface ClientProps {
     id: string
     className?: string
     debug?: boolean
+    /**
+     * Phase 4 观战/回放模式：隐藏手牌 UI、禁用所有交互。
+     * 用于观战频道和回放查看器，避免观战者误操作或泄露手牌信息。
+     */
+    readonly?: boolean
 }
-export const Client = memo(function Client({ id, className, debug }: ClientProps) {
-    const battleTheme = useBattleSheet();
+export const Client = memo(function Client({ id, className, debug, readonly }: ClientProps) {
+    const battleThemes = useBattleSheet();
     const client = useClientStore(state => state.clients[id]);
 
     const onDismissError = () => {
@@ -35,7 +40,7 @@ export const Client = memo(function Client({ id, className, debug }: ClientProps
         return useClientStore.getState().onUIOpen(id);
     }, [id]);
 
-    return <div className={classNames(styles.root, className)}>
+    return <div className={classNames(styles.root, className)} data-readonly={readonly || null}>
         <ErrorBoundary fallbackRender={ClientError}>
             {client ? <div className={styles.client} style={{
                 '--lane-count': client.fight.opts.lanes,
@@ -43,16 +48,17 @@ export const Client = memo(function Client({ id, className, debug }: ClientProps
             } as CSSProperties}>
                 <ClientContext.Provider value={id}>
                     <LeftInfo />
-                    <Board />
+                    <Board readonly={readonly} />
                     <RightInfo />
                     <NSlice
                         className={styles.middle}
-                        sheet={battleTheme}
+                        sheet={battleThemes}
                         name="middle"
                         cols={[0]}
                         rows={[4]}
                     />
-                    <Hand />
+                    {/* readonly 模式隐藏手牌区，避免观战者看到玩家手牌 */}
+                    {!readonly && <Hand />}
                     {debug && <><DebugEvents /><DebugInfo /></>}
                     {client.errors[0] != null && <div className={styles.errorBackdrop} onClick={onDismissError}>
                         <div className={styles.error} onClick={e => e.stopPropagation()}>

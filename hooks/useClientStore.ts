@@ -41,6 +41,8 @@ export interface FightStore {
     onUIOpen: (id: string) => () => void;
     maybeConsume: (id: string, consumer?: symbol) => void;
     commitEvent: (id: string, event: Event) => void;
+    /** Phase 4 回放：直接 commit 事件到 fight 状态，不走动画队列/音效。用于回放 seek 跳转。 */
+    commitEventsDirect: (id: string, events: Event[]) => void;
 }
 
 export const useClientStore = create(devtools<FightStore>((set, get) => ({
@@ -122,6 +124,12 @@ export const useClientStore = create(devtools<FightStore>((set, get) => ({
 
         triggerEventSound(event, client);
         commitEvents(client, [clone(event)]);
+        useClientStore.getState().setClient(id, client => client);
+    },
+    commitEventsDirect(id, events) {
+        const client = get().clients[id];
+        if (!client) return;
+        commitEvents(client, events.map(e => clone(e)));
         useClientStore.getState().setClient(id, client => client);
     },
 }), {

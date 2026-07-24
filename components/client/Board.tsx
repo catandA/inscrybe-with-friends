@@ -21,7 +21,7 @@ import { HiddenHand } from './ui/HiddenHand';
 import { useElementSize } from '@mantine/hooks';
 import { useEm } from '@/hooks/dom/useEm';
 
-export const Board = memo(function Board() {
+export const Board = memo(function Board({ readonly }: { readonly?: boolean } = {}) {
     const battleTheme = useBattleSheet();
     const prints = useFight(fight => rulesets[fight.opts.ruleset].prints);
     const field = useFight(fight => fight.field);
@@ -33,11 +33,13 @@ export const Board = memo(function Board() {
     const [pending] = useClientProp('pending');
     const { sendAction, sendResponse } = useClientActions();
     const [sacs, { clear: clearSacs, toggle: toggleSac }] = useSet<number>();
-    const wantsTarget = useFight(fight => fight.waitingFor?.req.type === 'snipe' && fight.waitingFor.side === 'player') && !pending;
+    // readonly 模式下禁用所有交互目标
+    const waitingForSnipe = useFight(fight => fight.waitingFor?.req.type === 'snipe' && fight.waitingFor.side === 'player');
+    const wantsTarget = !readonly && waitingForSnipe && !pending;
 
     const holding = holdingIdx == null ? null : hand[holdingIdx];
     const holdingPrint = holding && prints[holding.print];
-    let canPlay = !!(isPlayTurn && !pending && holding);
+    let canPlay = !!(isPlayTurn && !pending && holding && !readonly);
     if (holdingPrint?.cost?.type === 'blood' && holdingIdx !== mustPlay) {
         canPlay = false;
     }
@@ -56,39 +58,39 @@ export const Board = memo(function Board() {
     if (mustPlay != null) needsSac = false;
 
     const onTryPlay = useCallback((lane: number) => {
-        if (holdingIdx == null || pending || !canPlay) return;
+        if (readonly || holdingIdx == null || pending || !canPlay) return;
         sendAction('play', { lane, card: holdingIdx, sacs });
         clearSacs();
         setHolding(null);
         setHammering(false);
-    }, [clearSacs, holdingIdx, pending, sacs, sendAction, setHolding, setHammering, canPlay]);
+    }, [clearSacs, holdingIdx, pending, sacs, sendAction, setHolding, setHammering, canPlay, readonly]);
     const onTrySac = useCallback((lane: number) => {
-        if (holdingIdx == null || pending) return;
+        if (readonly || holdingIdx == null || pending) return;
         sendAction('play', { lane, card: holdingIdx, sacs });
         clearSacs();
         setHolding(null);
         setHammering(false);
-    }, [clearSacs, holdingIdx, pending, sacs, sendAction, setHolding, setHammering]);
+    }, [clearSacs, holdingIdx, pending, sacs, sendAction, setHolding, setHammering, readonly]);
 
     const onTarget = (lane: number) => {
-        if (!wantsTarget) return;
+        if (readonly || !wantsTarget) return;
         sendResponse('snipe', { lane });
         setHammering(false);
     };
     const onHammer = (lane: number) => {
-        if (pending) return;
+        if (readonly || pending) return;
         sendAction('hammer', { lane });
         setHolding(null);
         setHammering(false);
     };
     const onActivate = useCallback((lane: number, sigil: string) => {
-        if (pending) return;
+        if (readonly || pending) return;
         sendAction('activate', { lane, sigil }, {
             InsufficientResources: () => triggerSound('error'),
         });
         setHolding(null);
         setHammering(false);
-    }, [pending, sendAction, setHolding, setHammering]);
+    }, [pending, sendAction, setHolding, setHammering, readonly]);
 
     const onActivateLane = useMemo(() => {
         return Array.from({ length: field.player.length }, (card, i) => (sigil: string) => onActivate(i, sigil));

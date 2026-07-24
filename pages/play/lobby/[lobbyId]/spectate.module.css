@@ -1,0 +1,39 @@
+.spectate {
+    height: 100%;
+}
+
+.clientRoot {
+    height: 100%;
+    position: relative;
+}
+
+.client {
+    height: 100%;
+}
+
+.spectatorBadge {
+    position: absolute;
+    top: 4em;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    padding: 2em 6em;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: 1em solid var(--flow);
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.gameEndBackdrop {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 30;
+}
+
+.gameEnd {
+    width: 200em;
+}

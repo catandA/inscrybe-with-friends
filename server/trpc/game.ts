@@ -11,7 +11,7 @@ import { Event, translateEvent } from '@/lib/engine/Events';
 import { Rng } from '@/lib/engine/Rng';
 import { clone, entries, fromEntries } from '@/lib/utils';
 import { Prisma } from '@prisma/client';
-import { triggerFightPacket, triggerGameEnd, triggerLobbyGameStart, triggerLobbyRefetch } from '../pusher';
+import { triggerFightPacket, triggerGameEnd, triggerLobbyGameStart, triggerLobbyRefetch, triggerSpectatorPacket, triggerSpectatorGameEnd } from '../pusher';
 import { LogContext, logger } from '../logger';
 import { randomUUID } from 'crypto';
 import {
@@ -118,8 +118,6 @@ export const gameRouter = router({
             const game = await prisma.game.findFirst({ where: { id: input.gameId } });
             if (!game) throw new TRPCError({ code: 'NOT_FOUND', message: 'Game not found' });
 
-            // TODO: account for spectators
-
             const player = await prisma.gamePlayer.findFirst({
                 where: { gameId: input.gameId, userId: ctx.session.user.id },
             });
@@ -145,10 +143,215 @@ export const gameRouter = router({
 
             const outboundInitPacket: FightPacket | null = initPacket && translatePacket(initPacket, side);
 
+            // Phase 4 断线重连：返回最新 packet 的 id 和 createdAt，
+            // 客户端可在重连后用 getPacketsSince 拉取错过的 packet 恢复动画连续性。
+            const lastPacket = await prisma.gamePacket.findFirst({
+                where: { gameId: input.gameId },
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, createdAt: true },
+            });
+
             return {
                 id: input.gameId,
                 fight: outboundFight,
                 initPacket: outboundInitPacket,
+                lastPacketId: lastPacket?.id ?? null,
+                lastPacketAt: lastPacket?.createdAt ?? null,
+                endedAt: game.endedAt,
+            };
+        }),
+
+    /**
+     * Phase 4 断线重连：拉取某个 packet 之后的所有 packet（不含该 packet 本身）。
+     *
+     * 用途：客户端重连时，本地状态可能滞后于服务端。通过记录最后看到的 packetId，
+     * 客户端可以请求此端点获取错过的 packet 并按序回放，恢复动画连续性。
+     *
+     * 注意：如果 host 仍在 Redis 中（游戏未结束），fight 状态是权威的；
+     * 如果 host 已被 flush（游戏结束或超时），客户端只能依赖 packet 回放重建状态。
+     */
+    getPacketsSince: protectedProcedure
+        .input(z.object({
+            gameId: z.string(),
+            afterPacketId: z.string(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const player = await prisma.gamePlayer.findFirst({
+                where: { gameId: input.gameId, userId: ctx.session.user.id },
+            });
+            if (!player) throw new TRPCError({ code: 'FORBIDDEN', message: 'You are not a player in this game' });
+            const side = zFightSide.parse(player.side);
+
+            const afterPacket = await prisma.gamePacket.findUnique({
+                where: { id: input.afterPacketId },
+                select: { createdAt: true },
+            });
+            if (!afterPacket) throw new TRPCError({ code: 'NOT_FOUND', message: 'Reference packet not found' });
+
+            const packets = await prisma.gamePacket.findMany({
+                where: {
+                    gameId: input.gameId,
+                    createdAt: { gt: afterPacket.createdAt },
+                },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true, packet: true },
+            });
+
+            const outboundPackets = packets.map(p => ({
+                id: p.id,
+                packet: translatePacket(p.packet as FightPacket, side),
+            }));
+
+            return { packets: outboundPackets };
+        }),
+
+    /**
+     * Phase 4 回放系统：列出当前用户可回放的对局（已结束且用户是参与者）。
+     */
+    listReplayable: protectedProcedure
+        .input(z.object({
+            limit: z.number().min(1).max(50).optional(),
+        }).optional())
+        .query(async ({ ctx, input }) => {
+            const limit = input?.limit ?? 20;
+            const gamePlayers = await prisma.gamePlayer.findMany({
+                where: { userId: ctx.session.user.id },
+                include: {
+                    game: {
+                        include: {
+                            players: { include: { user: true } },
+                        },
+                    },
+                },
+                orderBy: { game: { createdAt: 'desc' } },
+                take: limit,
+            });
+
+            return gamePlayers
+                .filter(gp => gp.game.endedAt != null)
+                .map(gp => {
+                    const player = gp.game.players.find(p => p.side === 'player');
+                    const opposing = gp.game.players.find(p => p.side === 'opposing');
+                    return {
+                        gameId: gp.gameId,
+                        side: gp.side,
+                        endedAt: gp.game.endedAt!,
+                        createdAt: gp.game.createdAt,
+                        playerName: player?.user.name ?? 'Unknown',
+                        opposingName: opposing?.user.name ?? 'Unknown',
+                        playerId: player?.userId ?? '',
+                        opposingId: opposing?.userId ?? '',
+                    };
+                });
+        }),
+
+    /**
+     * Phase 4 回放系统：获取一局对战的全部 packet 和初始 fight 重建数据。
+     *
+     * 返回 opts + decks（游戏开始时保存的），客户端用 createFight(opts, ['player'], decks)
+     * 重建初始空 fight，然后逐个 addPacket 播放事件序列。
+     *
+     * 返回的 packet 都已 translateEvent 到 player 视角（与观战模式一致）。
+     */
+    getReplay: protectedProcedure
+        .input(z.object({
+            gameId: z.string(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const game = await prisma.game.findFirst({
+                where: { id: input.gameId },
+                include: { players: { include: { user: true } } },
+            });
+            if (!game) throw new TRPCError({ code: 'NOT_FOUND', message: 'Game not found' });
+            if (!game.endedAt) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Game has not ended yet' });
+
+            // 校验：只有参与过该对局的玩家可以回放（防止信息泄露）
+            const isPlayer = game.players.some(p => p.userId === ctx.session.user.id);
+            if (!isPlayer) throw new TRPCError({ code: 'FORBIDDEN', message: 'You were not a player in this game' });
+
+            // 历史数据可能没有 opts/decks，无法回放
+            if (!game.opts || !game.decks) {
+                throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Replay data not available for this game (legacy data)' });
+            }
+
+            const packets = await prisma.gamePacket.findMany({
+                where: { gameId: input.gameId },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true, packet: true },
+            });
+
+            // 回放视角固定为 player 方（与观战模式一致）
+            const side = 'player' as const;
+            const outboundPackets = packets.map(p => ({
+                id: p.id,
+                packet: translatePacket(p.packet as FightPacket, side),
+            }));
+
+            const player = game.players.find(p => p.side === 'player');
+            const opposing = game.players.find(p => p.side === 'opposing');
+
+            return {
+                gameId: input.gameId,
+                seed: game.seed,
+                opts: game.opts as PrismaJson.FightOptions,
+                decks: game.decks as PrismaJson.GameDecks,
+                packets: outboundPackets,
+                playerName: player?.user.name ?? 'Unknown',
+                opposingName: opposing?.user.name ?? 'Unknown',
+            };
+        }),
+
+    /**
+     * Phase 4 观战模式：获取当前观战视角的对战状态。
+     *
+     * 与 `get` 类似，但不要求调用者是游戏参与者。
+     * 视角固定为 player 方（与观战 packet 推送一致）。
+     * 返回 initPacket（如果有且只有一个 packet）让观战者从开局重建状态。
+     */
+    spectate: protectedProcedure
+        .input(z.object({
+            gameId: z.string(),
+            includeInitPacket: z.boolean().optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const game = await prisma.game.findFirst({ where: { id: input.gameId } });
+            if (!game) throw new TRPCError({ code: 'NOT_FOUND', message: 'Game not found' });
+
+            const host = await kv.getHost(input.gameId);
+            // 游戏可能已结束（host 被 flush），此时无法观战实时状态；
+            // 引导用户使用回放系统查看历史对局。
+            if (!host) throw new TRPCError({ code: 'NOT_FOUND', message: 'Game is no longer live. Use replay instead.' });
+
+            // 观战视角固定为 player 方
+            const side = 'player' as const;
+            const outboundFight = translateFight(host.fight, side);
+
+            let initPacket: FightPacket | null = null;
+            if (input.includeInitPacket) {
+                const [firstPacket, secondPacket] = await prisma.gamePacket.findMany({
+                    where: { gameId: input.gameId },
+                    orderBy: { createdAt: 'asc' },
+                    take: 2,
+                });
+                if (firstPacket && !secondPacket) initPacket = firstPacket.packet as FightPacket;
+                else if (!firstPacket) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Game has not started' });
+            }
+
+            const outboundInitPacket: FightPacket | null = initPacket && translatePacket(initPacket, side);
+
+            const lastPacket = await prisma.gamePacket.findFirst({
+                where: { gameId: input.gameId },
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, createdAt: true },
+            });
+
+            return {
+                id: input.gameId,
+                fight: outboundFight,
+                initPacket: outboundInitPacket,
+                lastPacketId: lastPacket?.id ?? null,
+                lastPacketAt: lastPacket?.createdAt ?? null,
+                endedAt: game.endedAt,
             };
         }),
     start: protectedProcedure
@@ -218,6 +421,12 @@ export const gameRouter = router({
                         id: gameId,
                         lobbyId: lobby.id,
                         seed: host.seed,
+                        // Phase 4 回放：保存初始 opts 和 decks，供回放重建 fight
+                        opts: fightOptions as Prisma.JsonObject,
+                        decks: {
+                            player: zDeckCards.parse(playerDeck.cards),
+                            opposing: zDeckCards.parse(opposingDeck.cards),
+                        } as Prisma.JsonObject,
                         players: { createMany: { data: [
                             { userId: sides.player, side: 'player' },
                             { userId: sides.opposing, side: 'opposing' },
@@ -285,6 +494,14 @@ export const gameRouter = router({
                     triggerFightPacket(sides[side], input.gameId, packet);
                 }
 
+                // Phase 4 观战模式：把 player 视角的 packet 推送到观战频道。
+                // 观战者看到的是 player 方视角（包含 player 手牌信息）。
+                // 选用 player 视角而非中立视角的理由：Client 组件复用 player 视角渲染逻辑最简单，
+                // 且观战者通过 readonly 模式不会获得操作能力。中立视角需新增 translateFightForSpectator，
+                // 留待后续优化（隐藏双方手牌）。
+                const spectatorPacket = outboundPackets.player;
+                if (spectatorPacket) triggerSpectatorPacket(input.gameId, spectatorPacket);
+
                 const aliveSides = FIGHT_SIDES.filter(side => (
                     host.fight.players[side].deaths < host.fight.opts.lives
                 ));
@@ -313,6 +530,8 @@ export const gameRouter = router({
                     const endMessage = winningPlayer ? `${winningPlayer.user.name} won!` : 'The game ended in a draw due to an internal error!';
                     for (const side of FIGHT_SIDES)
                         triggerGameEnd(sides[side], input.gameId, endMessage);
+                    // Phase 4：通知观战者游戏结束
+                    triggerSpectatorGameEnd(input.gameId, endMessage);
                 }
             } finally {
                 await downConcurrency(`game-action:${input.gameId}`);
