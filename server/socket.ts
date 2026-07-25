@@ -69,30 +69,36 @@ export async function setupSocketIO(httpServer: HTTPServer) {
     });
 }
 
-export function getIO(): IOServer {
-    if (!io) throw new Error('Socket.IO not initialized. Did you call setupSocketIO()?');
+export function getIO(): IOServer | null {
+    // Next.js dev 模式：API routes 跑在 render worker 子进程，主进程 server.ts
+    // 调的 setupSocketIO 只设了主进程的 io 变量，worker 进程的 io 永远是 null。
+    // 不再抛错——trigger 函数会检查返回值并容错跳过。prod 模式无 worker 隔离问题。
     return io;
 }
 
 // === Trigger functions（与原 server/pusher.ts 同名同签名，平滑替换调用方） ===
+//
+// 所有 trigger 在 io=null（Next.js dev worker 进程）时静默跳过——
+// 通知失败只是某个客户端收不到实时推送，不应让 mutation 报错。
+// prod 模式 io 一定非 null（setupSocketIO 在主进程已调用）。
 
 export function triggerLobbyRefetch(lobbyId: string, fromUser?: string) {
-    getIO().to(`lobby:${lobbyId}`).emit('lobby:refetch', { from: fromUser });
+    getIO()?.to(`lobby:${lobbyId}`).emit('lobby:refetch', { from: fromUser });
 }
 
 export function triggerLobbyGameStart(lobbyId: string) {
-    getIO().to(`lobby:${lobbyId}`).emit('lobby:game-start', {});
+    getIO()?.to(`lobby:${lobbyId}`).emit('lobby:game-start', {});
 }
 
 export function triggerFightPacket(toUser: string, gameId: string, packet: FightPacket) {
-    getIO().to(`user:${toUser}`).emit('game-packet', {
+    getIO()?.to(`user:${toUser}`).emit('game-packet', {
         gameId,
         packet,
     } satisfies UserGamePacket);
 }
 
 export function triggerGameEnd(toUser: string, gameId: string, message: string) {
-    getIO().to(`user:${toUser}`).emit('game-end', {
+    getIO()?.to(`user:${toUser}`).emit('game-end', {
         gameId,
         message,
     } satisfies GameEndMessage);
@@ -104,7 +110,7 @@ export function triggerGameEnd(toUser: string, gameId: string, message: string) 
  * 观战房间内所有订阅者都收到。事件名与个人房间一致（'game-packet'）。
  */
 export function triggerSpectatorPacket(gameId: string, packet: FightPacket) {
-    getIO().to(`spectate:${gameId}`).emit('game-packet', {
+    getIO()?.to(`spectate:${gameId}`).emit('game-packet', {
         gameId,
         packet,
     } satisfies SpectatorGamePacket);
@@ -112,7 +118,7 @@ export function triggerSpectatorPacket(gameId: string, packet: FightPacket) {
 
 /** Phase 4 观战模式：向观战房间推送游戏结束消息。 */
 export function triggerSpectatorGameEnd(gameId: string, message: string) {
-    getIO().to(`spectate:${gameId}`).emit('game-end', {
+    getIO()?.to(`spectate:${gameId}`).emit('game-end', {
         gameId,
         message,
     } satisfies GameEndMessage);
