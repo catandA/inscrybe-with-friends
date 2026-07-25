@@ -18,10 +18,14 @@ export function provider<P extends DiscordProfile>(
         token: 'https://discord.com/api/oauth2/token',
         userinfo: 'https://discord.com/api/users/@me',
         profile(profile) {
+            // 旧版只返回 id/name/image，不返回 email。
+            // Phase 6 起改为也返回 email，让 NextAuth 的 email 匹配账号链接生效
+            // （用户用邮箱密码注册后，再用 Discord 登录会自动绑定到同一 User）。
             return {
                 id: profile.id,
                 name: profile.username,
                 image: getDiscordImage(profile),
+                email: profile.email,
             };
         },
         options,

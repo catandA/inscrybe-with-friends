@@ -1,0 +1,55 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 1.5em;
+    padding: 2em;
+    background: var(--bg-color, #1a1a1a);
+    color: var(--fg-color, #e0e0e0);
+}
+
+.providers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8em;
+    width: 100%;
+    max-width: 320px;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8em;
+    width: 100%;
+    max-width: 320px;
+    padding: 1.5em;
+    border: 1px solid var(--border-color, #444);
+    background: var(--panel-color, #2a2a2a);
+}
+
+.label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+}
+
+.input {
+    padding: 0.6em;
+    border: 1px solid var(--border-color, #555);
+    background: var(--input-bg, #1a1a1a);
+    color: var(--fg-color, #e0e0e0);
+    font-size: 14px;
+}
+
+.error {
+    color: #ff6b6b;
+}
+
+.registerLink {
+    text-align: center;
+    text-decoration: underline;
+    cursor: pointer;
+    color: var(--fg-color, #e0e0e0);
+}

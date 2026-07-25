@@ -7,7 +7,7 @@ import { useClientStore } from '@/hooks/useClientStore';
 import { createFight } from '@/lib/engine/Fight';
 import { clone } from '@/lib/utils';
 import { Text } from '@/components/ui/Text';
-import { subscribeGameEnd, subscribeGamePacket } from '@/lib/pusher';
+import { subscribeGameEnd, subscribeGamePacket } from '@/lib/socket';
 import { Client } from '@/components/client/Client';
 import { Button } from '@/components/inputs/Button';
 import { Box } from '@/components/ui/Box';

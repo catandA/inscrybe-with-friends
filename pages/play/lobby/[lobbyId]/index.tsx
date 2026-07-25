@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Select } from '@/components/inputs/Select';
 import { Button } from '@/components/inputs/Button';
 import { useEffect, useMemo, useRef } from 'react';
-import { pusherClient } from '@/lib/pusher';
+import { subscribeLobby } from '@/lib/socket';
 import { defaultFightOptions, zFightOptions } from '@/lib/online/z';
 import type { FightOptions } from '@/lib/engine/Fight';
 import { FightSide } from '@/lib/engine/Fight';
@@ -119,15 +119,15 @@ export default function Lobby() {
         && lobby.data?.decks && lobby.data.decks[`${player.userId}`] && lobby.data.decks[`${opposing.userId}`];
 
     useEffect(() => {
-        const channelId = `private-lobby@${lobbyId}`;
-        const channel = pusherClient.subscribe(channelId);
-        channel.bind('refetch', ({ from }: { from: string }) => {
-            if (from !== user.data?.id) lobby.refetch();
+        const unsubscribe = subscribeLobby(lobbyId, {
+            onRefetch: (from) => {
+                if (from !== user.data?.id) lobby.refetch();
+            },
+            onGameStart: () => {
+                onEnterGame();
+            },
         });
-        channel.bind('game-start', () => {
-            onEnterGame();
-        });
-        return () => pusherClient.unsubscribe(channelId);
+        return unsubscribe;
     }, [lobbyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const deleteLobby = trpc.lobbies.delete.useMutation({ onSuccess: () => router.push('/play') });

@@ -10,7 +10,7 @@ import { Text } from '@/components/ui/Text';
 import { Box } from '@/components/ui/Box';
 import { Button } from '@/components/inputs/Button';
 import { Client } from '@/components/client/Client';
-import { subscribeSpectatorGameEnd, subscribeSpectatorPacket } from '@/lib/pusher';
+import { subscribeSpectatorGameEnd, subscribeSpectatorPacket } from '@/lib/socket';
 import { useTranslation } from 'react-i18next';
 
 /**

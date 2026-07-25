@@ -4,7 +4,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { PlayerPerm } from '@/lib/online/types';
-import { triggerLobbyRefetch } from '../pusher';
+import { triggerLobbyRefetch } from '../socket';
 import { zFightOptions, zFightSide } from '@/lib/online/z';
 import { randomUUID } from 'crypto';
 import { kv } from '../kv';

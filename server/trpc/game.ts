@@ -11,7 +11,7 @@ import { Event, translateEvent } from '@/lib/engine/Events';
 import { Rng } from '@/lib/engine/Rng';
 import { clone, entries, fromEntries } from '@/lib/utils';
 import { Prisma } from '@prisma/client';
-import { triggerFightPacket, triggerGameEnd, triggerLobbyGameStart, triggerLobbyRefetch, triggerSpectatorPacket, triggerSpectatorGameEnd } from '../pusher';
+import { triggerFightPacket, triggerGameEnd, triggerLobbyGameStart, triggerLobbyRefetch, triggerSpectatorPacket, triggerSpectatorGameEnd } from '../socket';
 import { LogContext, logger } from '../logger';
 import { randomUUID } from 'crypto';
 import {

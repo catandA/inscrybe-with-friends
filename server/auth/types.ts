@@ -5,4 +5,5 @@ export interface DiscordProfile {
     discriminator: string
     avatar: string
     verified: boolean
+    email: string
 }

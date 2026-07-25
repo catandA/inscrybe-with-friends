@@ -12,6 +12,15 @@ const nextConfig = {
             use: 'raw-loader',
         });
 
+        // tone v14 的 package.json 有 "browser": "build/Tone.js"（UMD 构建）。
+        // webpack 5 在浏览器上下文优先用 browser 字段，但 UMD 是 module.exports = Tone，
+        // 没有 start/Sampler 等 named exports，导致 `import * as Tone` + `Tone.start()` 报
+        // "Attempted import error: 'start' is not exported from 'tone'"。
+        // 强制 webpack 解析到 ESM 入口（build/esm/index.js），那里有正确的命名导出。
+        config.resolve = config.resolve || {};
+        config.resolve.alias = config.resolve.alias || {};
+        config.resolve.alias.tone = require.resolve('tone/build/esm/index.js');
+
         if (isServer) {
             config.devtool = 'source-map';
         }

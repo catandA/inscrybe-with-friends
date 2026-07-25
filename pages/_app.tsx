@@ -11,7 +11,7 @@ import * as Tone from 'tone';
 import { trpc } from '@/lib/trpc';
 import { isClient } from '@/lib/utils';
 import { Navbar } from '@/components/nav/Navbar';
-import { pusherClient } from '@/lib/pusher';
+import { socketClient } from '@/lib/socket';
 import { applyTheme, type Theme } from '@/lib/themes';
 
 const App: AppType<{ session: any }> = ({ Component, pageProps, ...appProps }) => {
@@ -46,14 +46,16 @@ const App: AppType<{ session: any }> = ({ Component, pageProps, ...appProps }) =
         });
 
         if (!session) {
-            if (isClient) signIn('discord');
+            if (isClient) signIn();
             return <div></div>;
         }
 
         if (isClient) {
+            // Socket.IO 客户端：登录后手动连接（autoConnect: false）。
+            // 鉴权走同源 cookie，不需要像 Pusher 那样单独 signin。
             // @ts-ignore
-            window.pusherClient = pusherClient;
-            pusherClient.signin();
+            window.socketClient = socketClient;
+            if (!socketClient.connected) socketClient.connect();
         };
 
         return <div className={styles.play} onClick={() => Tone.start()}>

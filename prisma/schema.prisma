@@ -19,6 +19,14 @@ model User {
     createdAt   DateTime @default(now())
     permissions Int      @default(0)
 
+    // 邮箱 + 邮箱密码登录（Phase 6 扩展 NextAuth）
+    // 旧 Discord 用户没邮箱（provider 不返回 email），保持 null。
+    // email 唯一但允许 null（多个 null 不会冲突，符合 NextAuth 期待）。
+    email         String?  @unique
+    emailVerified DateTime?
+    // 邮箱密码登录用 bcrypt 哈希；OAuth 用户保持 null。
+    passwordHash  String?
+
     // Phase 3 主题系统：CSS 变量键值对（如 { "--bg-color": "#000" }）。null 表示用默认主题。
     theme Json?
 

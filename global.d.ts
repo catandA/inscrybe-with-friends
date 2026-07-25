@@ -3,10 +3,8 @@ declare namespace NodeJS {
         DISCORD_CLIENT_ID: string;
         DISCORD_CLIENT_SECRET: string;
 
-        PUSHER_APP_ID: string;
-        PUSHER_SECRET: string;
-        NEXT_PUBLIC_PUSHER_KEY: string;
-        NEXT_PUBLIC_PUSHER_CLUSTER: string;
+        GITHUB_CLIENT_ID: string;
+        GITHUB_CLIENT_SECRET: string;
 
         CRON_SECRET: string;
     }

@@ -3,16 +3,23 @@ import { redis } from '@/server/kv';
 import { prisma } from '@/server/db';
 import { User } from '@prisma/client';
 
-const toAdapterUser = (user: Pick<User, 'id' | 'name' | 'image'>): AdapterUser => ({
+const toAdapterUser = (user: Pick<User, 'id' | 'name' | 'image' | 'email' | 'emailVerified'>): AdapterUser => ({
     id: user.id,
     name: user.name,
     image: user.image,
-    email: '',
-    emailVerified: null,
+    email: user.email ?? '',
+    emailVerified: user.emailVerified,
 });
 export const adapter: Adapter = {
     async createUser(userInfo) {
-        const user = { name: userInfo.name!, image: userInfo.image! };
+        // 旧版只存 name + image；新增 email/emailVerified 以支持邮箱密码登录与 GitHub OAuth。
+        // OAuth provider 没返回的字段会是 undefined（Prisma 视为 skip），保持 null。
+        const user = {
+            name: userInfo.name!,
+            image: userInfo.image!,
+            email: userInfo.email ?? null,
+            emailVerified: userInfo.emailVerified ?? null,
+        };
         const { id } = await prisma.user.create({ data: user });
 
         return toAdapterUser({ id, ...user });
@@ -23,7 +30,11 @@ export const adapter: Adapter = {
         return user ? toAdapterUser(user) : null;
     },
     async getUserByEmail(email) {
-        return null;
+        // 旧版直接返回 null，导致 NextAuth 的「email 匹配则链接账号」流程失效。
+        // 现在真实查询，让用户用邮箱密码注册后，再用 GitHub OAuth 登录会自动绑定到同一 User。
+        if (!email) return null;
+        const user = await prisma.user.findFirst({ where: { email } });
+        return user ? toAdapterUser(user) : null;
     },
     async getUserByAccount({ providerAccountId, provider }) {
         const connection = await prisma.connection.findFirst({ where: { connectionId: providerAccountId, provider } });
@@ -41,6 +52,8 @@ export const adapter: Adapter = {
         const newUser = await prisma.user.update({ where: { id }, data: {
             name: user.name ?? undefined,
             image: user.image ?? undefined,
+            email: user.email ?? undefined,
+            emailVerified: user.emailVerified ?? undefined,
         } });
 
         return toAdapterUser(newUser);

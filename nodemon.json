@@ -1,0 +1,11 @@
+{
+    "watch": [
+        "server.ts",
+        "server",
+        "preload.cjs"
+    ],
+    "ext": "ts,tsx,cjs,json",
+    "exec": "tsx --require ./preload.cjs server.ts",
+    "legacy-watch": true,
+    "verbose": false
+}
