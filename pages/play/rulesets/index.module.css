@@ -59,8 +59,27 @@
     color: #ff6b6b;
 }
 
+.warning {
+    color: #d4a017;
+}
+
 .empty {
     opacity: 0.5;
     padding: 12em;
     text-align: center;
+}
+
+.importMessages {
+    display: flex;
+    flex-direction: column;
+    gap: 2em;
+    max-height: 200em;
+    overflow-y: auto;
+}
+
+.warningList {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    padding-left: 8em;
 }
