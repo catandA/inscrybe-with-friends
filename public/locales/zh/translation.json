@@ -2,6 +2,8 @@
     "common": {
         "loading": "加载中...",
         "back": "返回",
+        "cancel": "取消",
+        "close": "关闭",
         "backToLobby": "返回大厅",
         "vs": "vs",
         "on": "开",
@@ -41,9 +43,18 @@
     },
     "discord": {
         "title": "嗨，玩家们！",
-        "body": "我为 Inscrybe w/ Friends 建了一个 <0>Discord 服务器</0>。之后我可能会有更多时间开发这个同人游戏，很希望能听到你们的反馈",
-        "joined": "太棒了，我加入了",
-        "joinLater": "稍后在设置中加入"
+        "body": "我为 Inscrybe w/ Friends 建了一个 <0>Discord 服务器</0>。将来我可能有更多时间开发这个同人游戏，希望能听到大家的反馈",
+        "joined": "哇塞我加入了",
+        "joinLater": "稍后在设置里加入"
+    },
+    "info": {
+        "title": "关于",
+        "about": "Inscrybe with Friends 是 Inscryption 的同人在线多人移植版，基于 React/Next.js 构建。这是一个非商业性质的同人项目。Inscryption © Daniel Mullins Games。",
+        "discordTitle": "社区",
+        "discordBody": "加入 Discord 服务器获取更新、反馈，以及找人对战。",
+        "joinDiscord": "加入 Discord",
+        "techTitle": "技术栈",
+        "tech": "基于 Next.js、TypeScript、tRPC、Prisma、Socket.IO、Tone.js 构建。Godot → Web 移植自原始 inscr-onln 项目。"
     },
     "rulebook": {
         "missingEntry": "缺失条目 ({{id}})",
@@ -234,7 +245,21 @@
         "internalError": "发生内部错误：{{detail}}",
         "successfullySignedIn": "登录成功",
         "closeWindow": "你现在可以关闭此窗口。",
-        "notVerified": "你必须验证 Discord 账户才能登录。"
+        "notVerified": "你必须验证 Discord 账户才能登录。",
+        "accountTitle": "账户",
+        "signOut": "退出登录",
+        "link": "绑定",
+        "linkTip": "绑定会创建新账号并合并到当前账号。如果该登录方式已关联到其他账号，会让你选择保留哪个账号。",
+        "linkSuccess": "绑定成功。",
+        "mergeTitle": "合并账号",
+        "mergeTip": "该登录方式已关联到另一个账号。请选择保留哪个账号——另一个账号的数据（牌组、规则集、对局记录）会转移到保留的账号，然后删除另一个账号。",
+        "keepThis": "保留此账号",
+        "mergeSuccess": "账号合并成功。",
+        "oauthTimeout": "登录请求超时。可能你的网络无法访问 OAuth 服务商，请重试或换一种登录方式。",
+        "accountConflictTitle": "登录方式已绑定其他账号",
+        "accountConflictBody": "该登录方式已关联到另一个账号。要合并账号，需要先退出当前账号，再用该登录方式登录到另一个账号，然后选择保留哪个账号。",
+        "continueMerge": "继续合并",
+        "signOutAndContinue": "退出并继续"
     },
     "replays": {
         "title": "回放",

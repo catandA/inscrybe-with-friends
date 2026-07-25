@@ -11,6 +11,7 @@ import * as Tone from 'tone';
 import { trpc } from '@/lib/trpc';
 import { isClient } from '@/lib/utils';
 import { Navbar } from '@/components/nav/Navbar';
+import { InfoButton } from '@/components/nav/InfoButton';
 import { socketClient } from '@/lib/socket';
 import { applyTheme, type Theme } from '@/lib/themes';
 
@@ -34,6 +35,15 @@ const App: AppType<{ session: any }> = ({ Component, pageProps, ...appProps }) =
         applyTheme(theme ?? null);
     }, [user?.theme, isPlayPath]);
 
+    // Phase 6.4 修复：getSession 必须在顶层调用（不能放在 if 块内）。
+    // 旧版把 useQuery 放在 `if (isPlayPath)` 里，导致 /play 与非 /play 路径间导航时
+    // hook 数量变化，触发 "Rendered fewer/more hooks than expected" 错误。
+    // 用 enabled 控制是否发请求，hook 本身始终调用。
+    const { data: session } = trpc.user.getSession.useQuery(void 0, {
+        refetchOnWindowFocus: false,
+        enabled: isPlayPath,
+    });
+
     if (appProps.router.pathname.startsWith('/auth/')) {
         return <SessionProvider>
             <Component {...pageProps} />
@@ -41,10 +51,6 @@ const App: AppType<{ session: any }> = ({ Component, pageProps, ...appProps }) =
     }
 
     if (isPlayPath) {
-        const { data: session } = trpc.user.getSession.useQuery(void 0, {
-            refetchOnWindowFocus: false,
-        });
-
         if (!session) {
             if (isClient) signIn();
             return <div></div>;
@@ -67,6 +73,7 @@ const App: AppType<{ session: any }> = ({ Component, pageProps, ...appProps }) =
                 <Rulebook />
             </SessionProvider>
             <Filters />
+            <InfoButton />
             <div className={styles.version}>
                 <Text>Alpha ({ version })</Text>
             </div>

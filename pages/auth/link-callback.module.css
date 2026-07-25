@@ -1,0 +1,85 @@
+.page {
+    font-size: 0.1875em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 1.5em;
+    padding: 2em;
+    background: var(--bg-color, #1a1a1a);
+    color: var(--fg-color, #e0e0e0);
+}
+
+.compare {
+    display: flex;
+    gap: 4em;
+    align-items: stretch;
+}
+
+.userCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1em;
+    padding: 2em;
+    border: 1px solid var(--border-color, #444);
+    background: var(--panel-color, #2a2a2a);
+    min-width: 200px;
+}
+
+.userCard.keep {
+    border-color: var(--emerald, #9cbf55);
+}
+
+.avatar {
+    width: 24em;
+    height: 24em;
+    image-rendering: pixelated;
+    border: 1em solid var(--ui-dark);
+}
+
+.providers {
+    display: flex;
+    gap: 1em;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.providerTag {
+    font-size: 7em;
+    padding: 0.5em 1em;
+    border: 1px solid var(--border-color, #555);
+    background: var(--ui-dark, #2a2a2a);
+}
+
+.userInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.vs {
+    display: flex;
+    align-items: center;
+    font-size: 10em;
+    color: var(--ui-dark, #727c5e);
+}
+
+.actions {
+    display: flex;
+    gap: 2em;
+}
+
+.tip {
+    max-width: 400px;
+    font-size: 7em;
+    color: var(--ui-dark, #727c5e);
+    line-height: 1.4;
+    text-align: center;
+}
+
+.loading {
+    font-size: 10em;
+}

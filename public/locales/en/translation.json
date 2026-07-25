@@ -2,6 +2,8 @@
     "common": {
         "loading": "Loading...",
         "back": "Back",
+        "cancel": "Cancel",
+        "close": "Close",
         "backToLobby": "Back to Lobby",
         "vs": "vs",
         "on": "ON",
@@ -44,6 +46,15 @@
         "body": "I made a <0>Discord server</0> for Inscrybe w/ Friends. At some point I may have more time to work on this fangame, and I would love to hear your feedback on things",
         "joined": "Omg sick I joined",
         "joinLater": "I'll join later in Settings"
+    },
+    "info": {
+        "title": "About",
+        "about": "Inscrybe with Friends is a fan-made online multiplayer port of Inscryption, built with React/Next.js. This is a non-commercial fan project. Inscryption is © Daniel Mullins Games.",
+        "discordTitle": "Community",
+        "discordBody": "Join the Discord server for updates, feedback, and to find people to play with.",
+        "joinDiscord": "Join Discord",
+        "techTitle": "Tech Stack",
+        "tech": "Built with Next.js, TypeScript, tRPC, Prisma, Socket.IO, and Tone.js. Godot → Web port based on the original inscr-onln project."
     },
     "rulebook": {
         "missingEntry": "Missing Entry ({{id}})",
@@ -234,7 +245,21 @@
         "internalError": "An internal error occured: {{detail}}",
         "successfullySignedIn": "Successfully signed in",
         "closeWindow": "You can now close this window.",
-        "notVerified": "You must verify your Discord account to sign in."
+        "notVerified": "You must verify your Discord account to sign in.",
+        "accountTitle": "Account",
+        "signOut": "Sign out",
+        "link": "Link",
+        "linkTip": "Linking a provider creates a new account and merges it into this one. If the provider is already linked to another account, you'll be asked which account to keep.",
+        "linkSuccess": "Provider linked successfully.",
+        "mergeTitle": "Merge accounts",
+        "mergeTip": "This provider is already linked to another account. Choose which account to keep — the other account's data (decks, rulesets, game history) will be transferred to the kept account, then the other account will be deleted.",
+        "keepThis": "Keep this account",
+        "mergeSuccess": "Accounts merged successfully.",
+        "oauthTimeout": "Login request timed out. The OAuth provider may be unreachable from your network. Try again or switch to another method.",
+        "accountConflictTitle": "Account already linked",
+        "accountConflictBody": "This provider is already linked to another account. To merge, you need to sign out of the current account and sign in with this provider — you'll then be asked which account to keep.",
+        "continueMerge": "Continue merge",
+        "signOutAndContinue": "Sign out and continue"
     },
     "replays": {
         "title": "Replays",

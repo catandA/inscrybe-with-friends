@@ -1,6 +1,6 @@
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import { prisma } from '@/server/db';
+import { prisma, withRetry } from '@/server/db';
 import type { User } from '@prisma/client';
 
 const toAdapterUser = (user: User) => ({
@@ -34,7 +34,7 @@ export const credentialsProvider = CredentialsProvider({
         const password = credentials?.password;
         if (typeof email !== 'string' || typeof password !== 'string') return null;
 
-        const user = await prisma.user.findFirst({ where: { email } });
+        const user = await withRetry(() => prisma.user.findFirst({ where: { email } }));
         if (!user || !user.passwordHash) return null;
 
         const ok = await bcrypt.compare(password, user.passwordHash);

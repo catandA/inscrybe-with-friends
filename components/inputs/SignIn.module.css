@@ -21,3 +21,12 @@
     margin-right: 4em;
     image-rendering: pixelated;
 }
+
+.username {
+    /* 跟随按钮字号，避免在 Navbar 里过大 */
+    font-size: 8em;
+    white-space: nowrap;
+    max-width: 60em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

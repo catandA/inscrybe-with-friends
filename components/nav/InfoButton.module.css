@@ -1,0 +1,85 @@
+.button {
+    position: fixed;
+    bottom: 2em;
+    left: 2em;
+    width: 14em;
+    height: 14em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ui);
+    border: 1em solid var(--flow);
+    border-bottom-width: 2em;
+    color: var(--flow);
+    cursor: pointer;
+    z-index: 10;
+    font-family: var(--font-gbc), sans-serif;
+    /* 不设 font-size：跟随 .play 的 0.1875em，与 Settings 等其它 UI 一致 */
+}
+
+.button:active {
+    border-bottom-width: 1em;
+    margin-bottom: 1em;
+    transform: translateY(1em);
+}
+
+.letter {
+    font-size: 10em;
+    line-height: 1;
+}
+
+.backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgb(0, 0, 0, .5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modal {
+    width: 480em;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: var(--flow);
+    display: flex;
+    flex-direction: column;
+    gap: 8em;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 3em;
+}
+
+.discordBtn {
+    background: var(--discord);
+    border: 1em solid var(--discord-darker);
+    border-bottom-width: 2em;
+    color: #fff;
+    padding: 2em 3em;
+    text-decoration: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3em;
+    font-family: var(--font-gbc), sans-serif;
+}
+
+.discordIcon {
+    width: 6em;
+    height: 6em;
+}
+
+.discordBtn:active {
+    border-bottom-width: 1em;
+    margin-bottom: 1em;
+    transform: translateY(1em);
+}
+
+.closeBtn {
+    align-self: flex-end;
+}

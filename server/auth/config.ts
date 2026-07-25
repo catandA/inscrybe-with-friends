@@ -44,6 +44,7 @@ export const authConfig: NextAuthConfig = {
     pages: {
         signIn: '/auth/signin',
         error: '/auth/internal-error',
-        signOut: '/auth/signout',
+        // signOut 不配置自定义页面：signOut() 直接 POST /api/auth/signout 即可，
+        // 无需前端 page。若以后要自定义退出页可再加。
     },
 };

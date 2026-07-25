@@ -1,4 +1,9 @@
 .page {
+    /* 关键：与 .play 容器一致的小字号（0.1875em ≈ 3px），
+       让 em 单位（按钮 padding/border、gap 等）与游戏内 UI 视觉比例一致。
+       auth 页面没套 .play 容器，不设的话 em 会相对浏览器默认 16px 计算，
+       按钮会变得巨大（参见 porting-notes 的 Phase 6.1 避坑记录）。 */
+    font-size: 0.1875em;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -16,6 +21,14 @@
     gap: 0.8em;
     width: 100%;
     max-width: 320px;
+}
+
+.providerIcon {
+    /* 跟随按钮字号（与 .page 的 0.1875em 一致），6em ≈ 18px 视觉合适 */
+    width: 6em;
+    height: 6em;
+    margin-right: 2em;
+    flex-shrink: 0;
 }
 
 .form {

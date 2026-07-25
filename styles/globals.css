@@ -46,6 +46,9 @@
     --discord: #5865f2;
     --discord-dark: #4752c4;
     --discord-darker: #3c45a5;
+    /* GitHub 品牌色（深色模式适配：浅灰，保证深色背景下可见） */
+    --github: #f0f6fc;
+    --github-dark: #8b949e;
 }
 
 @media (prefers-color-scheme: dark) {

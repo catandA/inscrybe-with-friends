@@ -1,0 +1,104 @@
+.page {
+    /* 与 signin 页面一致的小字号（参见 Phase 6.1 避坑记录） */
+    font-size: 0.1875em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 1.5em;
+    padding: 2em;
+    background: var(--bg-color, #1a1a1a);
+    color: var(--fg-color, #e0e0e0);
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 4em;
+}
+
+.avatar {
+    width: 24em;
+    height: 24em;
+    image-rendering: pixelated;
+    border: 1em solid var(--ui-dark);
+}
+
+.profileInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+}
+
+.providers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8em;
+    width: 100%;
+    max-width: 360px;
+}
+
+.providerRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2em;
+    padding: 1em 1.5em;
+    border: 1px solid var(--border-color, #444);
+    background: var(--panel-color, #2a2a2a);
+}
+
+.providerLeft {
+    display: flex;
+    align-items: center;
+    gap: 2em;
+}
+
+.providerIcon {
+    width: 6em;
+    height: 6em;
+    flex-shrink: 0;
+}
+
+.providerName {
+    font-size: 8em;
+}
+
+.providerStatus {
+    font-size: 7em;
+}
+
+.bound {
+    color: var(--emerald, #9cbf55);
+}
+
+.unbound {
+    color: var(--ui-dark, #727c5e);
+}
+
+.tip {
+    max-width: 360px;
+    font-size: 7em;
+    color: var(--ui-dark, #727c5e);
+    line-height: 1.4;
+    text-align: center;
+}
+
+.actions {
+    display: flex;
+    gap: 2em;
+    width: 100%;
+    max-width: 360px;
+}
+
+.signOutBtn {
+    flex: 1;
+}
+
+.backLink {
+    text-align: center;
+    text-decoration: underline;
+    cursor: pointer;
+    color: var(--fg-color, #e0e0e0);
+}

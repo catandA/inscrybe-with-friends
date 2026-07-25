@@ -20,9 +20,11 @@ model User {
     permissions Int      @default(0)
 
     // 邮箱 + 邮箱密码登录（Phase 6 扩展 NextAuth）
-    // 旧 Discord 用户没邮箱（provider 不返回 email），保持 null。
-    // email 唯一但允许 null（多个 null 不会冲突，符合 NextAuth 期待）。
-    email         String?  @unique
+    // Phase 6.4 起移除 @unique：三种登录方式（Discord/GitHub/邮箱密码）平等对待，
+    // 不用 email 作为身份唯一标识。多个 User 可以有相同 email（或都没 email）。
+    // 账号合并是用户主动操作（见 account.tsx + mergeAccounts mutation），
+    // 不再依赖 email 匹配做隐式合并。
+    email         String?
     emailVerified DateTime?
     // 邮箱密码登录用 bcrypt 哈希；OAuth 用户保持 null。
     passwordHash  String?

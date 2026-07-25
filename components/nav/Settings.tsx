@@ -7,15 +7,12 @@ import { HoverBorder } from '../ui/HoverBorder';
 import { Box } from '../ui/Box';
 import { Text } from '../ui/Text';
 import { Range } from '../inputs/Range';
-import { Button } from '../inputs/Button';
 import { useShallow } from 'zustand/shallow';
 import { useTranslation } from 'react-i18next';
 import { trpc } from '@/lib/trpc';
 import { PRESET_THEMES, applyTheme, type Theme } from '@/lib/themes';
 import { changeLanguage, getCurrentLanguage, LANGUAGES, LANGUAGE_LABELS, type Language } from '@/lib/i18n';
 import { entries } from '@/lib/utils';
-
-const DISCORD_LINK = 'https://discord.gg/me2Me5ztMz';
 
 export function Settings() {
     const { t } = useTranslation();
@@ -33,14 +30,17 @@ export function Settings() {
         </div>
         {open && <div className={styles.backdrop} onClick={() => setOpen(false)}>
             <Box className={styles.modal} onClick={event => event.stopPropagation()}>
-                <VolumeSetting type="all" />
-                <VolumeSetting type="music" />
-                <VolumeSetting type="sfx" />
-                <ThemeSetting />
-                <LanguageSetting />
-                <a className={styles.discordLink} href={DISCORD_LINK} target="_blank">
-                    <Button className={styles.discordButton} border="--discord-dark"><Text>{t('settings.joinDiscord')}</Text></Button>
-                </a>
+                <div className={styles.columns}>
+                    <div className={styles.column}>
+                        <VolumeSetting type="all" />
+                        <VolumeSetting type="music" />
+                        <VolumeSetting type="sfx" />
+                    </div>
+                    <div className={styles.column}>
+                        <ThemeSetting />
+                        <LanguageSetting />
+                    </div>
+                </div>
             </Box>
         </div>}
     </>;

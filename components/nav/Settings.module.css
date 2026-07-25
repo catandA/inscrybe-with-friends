@@ -11,8 +11,21 @@
 
 .backdrop .modal {
     margin: 16em auto;
-    width: 240em;
+    width: 480em;
     color: var(--flow);
+}
+
+.columns {
+    display: flex;
+    gap: 16em;
+}
+
+.column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8em;
+    min-width: 0;
 }
 
 .group {
@@ -46,19 +59,4 @@
 
 .error {
     color: #ff6b6b;
-}
-
-.discordLink {
-    display: flex;
-    flex-direction: column;
-}
-
-.discordButton.discordButton {
-    background: var(--discord);
-    border: 1em solid var(--discord-darker);
-    border-bottom-width: 2em;
-    color: #fff;
-    padding: 1em;
-
-    cursor: pointer;
 }
