@@ -1166,6 +1166,54 @@ const RULESETS = {
                 health: 3,
             },
 
+            // Amalgam：Amalgamation 神器卡。对齐 Godot standard.json line 40-46。
+            // 注意：portrait 未显式指定——无独立精灵表索引，Sprite 组件会降级为占位符。
+            // 如需正式美术，需在 lib/spritesheets/portraits.ts 补坐标或在 PNG 中加图素。
+            amalgam: {
+                name: 'Amalgam',
+                rare: true,
+                power: 0,
+                health: 1,
+                cost: { type: 'blood', amount: 2 },
+                sigils: ['amalgamation'],
+            },
+
+            // Pelt 系列：Steel Trap 死亡时给对手的卡。对齐 Godot standard.json line 454-471。
+            // 三种 Pelt 都是 nosac、0 攻击，仅作手牌占位（用于交易/抽牌效果）。
+            rabbitPelt: {
+                name: 'Rabbit Pelt',
+                banned: true,
+                power: 0,
+                health: 1,
+                noSac: true,
+            },
+            wolfPelt: {
+                name: 'Wolf Pelt',
+                banned: true,
+                power: 0,
+                health: 2,
+                noSac: true,
+            },
+            goldenPelt: {
+                name: 'Golden Pelt',
+                banned: true,
+                rare: true,
+                power: 0,
+                health: 3,
+                noSac: true,
+            },
+
+            // Skeleton Crew：被 Skeleton Crew (Yarr) 召唤的卡。对齐 Godot standard.json line 1199-1204。
+            // 自带 Brittle（攻击后死亡），attack 2 / health 1。
+            skeletonCrew: {
+                name: 'Skeleton Crew',
+                banned: true,
+                power: 2,
+                health: 1,
+                cost: { type: 'bone', amount: 2 },
+                sigils: ['brittle'],
+            },
+
         },
         sideDecks: {
             squirrels: {
@@ -1230,6 +1278,13 @@ const RULESETS = {
             activatedHealBones: [2, 2],
             conduitGainEnergy: [3],
             conduitSpawner: ['leapingBot'],
+            // Phase 2 第四批新增（对齐 Godot）：
+            // - skeletonCrewYarr：原位生成 Skeleton Crew（带 Brittle）
+            // - bombSpewerEternal：空格对位有敌方卡时生成 Explode Bot
+            // - gemDetonator：友方 Mox 死亡时触发 5 点 Detonator
+            skeletonCrewYarr: ['skeletonCrew'],
+            bombSpewerEternal: ['explodeBot'],
+            gemDetonator: [5],
         },
     },
 } satisfies Record<string, Ruleset<true>>;

@@ -84,8 +84,65 @@
     justify-content: space-between;
 }
 
+.sideDeckSelector {
+    display: flex;
+    flex-direction: column;
+    gap: 4em;
+    min-width: 100em;
+}
+
+.sideDeckExtra {
+    display: flex;
+    flex-direction: column;
+    gap: 4em;
+}
+
+.draftPool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2em;
+}
+
+.draftPoolItem {
+    cursor: pointer;
+    border: 1em solid var(--flow);
+    padding: 2em 4em;
+    background: var(--ui-dark);
+    color: var(--flow);
+    font-size: 11em;
+}
+
+.draftPoolItem.selected {
+    background: var(--flow);
+    color: var(--ui);
+}
+
+.draftPoolItem.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .prints {
     grid-area: prints;
-    padding: 4em;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.printsHeader {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 4em;
+    padding: 4em 4em 0;
+}
+
+.filterSelect {
+    width: 120em;
+}
+
+.printsList {
+    flex: 1 1 auto;
     overflow: auto;
+    padding: 4em;
 }

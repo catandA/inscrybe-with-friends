@@ -17,14 +17,20 @@ export interface PrintListProps {
     showNames?: boolean;
     prints?: string[];
     gap?: number;
+    /** 按 name/id 过滤可用 prints 列表（仅在未传入 prints prop 时生效）。 */
+    filter?: string;
 }
-export const PrintList = memo(function PrintList({ onSelect, editable, stacked, showNames, prints, ruleset }: PrintListProps) {
+export const PrintList = memo(function PrintList({ onSelect, editable, stacked, showNames, prints, ruleset, filter }: PrintListProps) {
     const allPrints = useMemo(() => {
         return rulesets[ruleset].prints;
     }, [ruleset]);
     const allPrintEntries = useMemo(() => {
-        return entries(allPrints).filter(([id, print]) => !print.banned);
-    }, [allPrints]);
+        const list = entries(allPrints).filter(([id, print]) => !print.banned);
+        if (!filter) return list;
+        const q = filter.toLowerCase();
+        return list.filter(([id, print]) =>
+            id.toLowerCase().includes(q) || getCardName(id, print).toLowerCase().includes(q));
+    }, [allPrints, filter]);
     const printEntries = prints?.map(id => [id, allPrints[id]] as const) ?? allPrintEntries;
 
     return (

@@ -5,8 +5,8 @@ import { prisma } from '../db';
 import { defaultFightOptions, zDeckCards, zFightOptions, zFightSide, zFightSides, zPlayerMessage } from '@/lib/online/z';
 import { kv } from '../kv';
 import { FightHost, createFightHost, createTick } from '@/lib/engine/Host';
-import { FIGHT_SIDES, FightSide, createFight, translateFight } from '@/lib/engine/Fight';
-import { FightPacket, handleAction, handleResponse, startGame, translatePacket } from '@/lib/engine/Tick';
+import { FIGHT_SIDES, FightSide, createFight, translateFight, translateFightForSpectator } from '@/lib/engine/Fight';
+import { FightPacket, handleAction, handleResponse, startGame, translatePacket, translatePacketForSpectator } from '@/lib/engine/Tick';
 import { Event, translateEvent } from '@/lib/engine/Events';
 import { Rng } from '@/lib/engine/Rng';
 import { clone, entries, fromEntries } from '@/lib/utils';
@@ -206,6 +206,44 @@ export const gameRouter = router({
         }),
 
     /**
+     * Phase 4 观战断线重连：拉取错过的 packet（中立视角）。
+     *
+     * 与 `getPacketsSince` 类似但不要求调用者是游戏参与者，
+     * 且用 `translatePacketForSpectator` 翻译以隐藏双方手牌信息。
+     */
+    getSpectatorPacketsSince: protectedProcedure
+        .input(z.object({
+            gameId: z.string(),
+            afterPacketId: z.string(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const game = await prisma.game.findFirst({ where: { id: input.gameId } });
+            if (!game) throw new TRPCError({ code: 'NOT_FOUND', message: 'Game not found' });
+
+            const afterPacket = await prisma.gamePacket.findUnique({
+                where: { id: input.afterPacketId },
+                select: { createdAt: true },
+            });
+            if (!afterPacket) throw new TRPCError({ code: 'NOT_FOUND', message: 'Reference packet not found' });
+
+            const packets = await prisma.gamePacket.findMany({
+                where: {
+                    gameId: input.gameId,
+                    createdAt: { gt: afterPacket.createdAt },
+                },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true, packet: true },
+            });
+
+            const outboundPackets = packets.map(p => ({
+                id: p.id,
+                packet: translatePacketForSpectator(p.packet as FightPacket, 'player'),
+            }));
+
+            return { packets: outboundPackets };
+        }),
+
+    /**
      * Phase 4 回放系统：列出当前用户可回放的对局（已结束且用户是参与者）。
      */
     listReplayable: protectedProcedure
@@ -302,11 +340,10 @@ export const gameRouter = router({
         }),
 
     /**
-     * Phase 4 观战模式：获取当前观战视角的对战状态。
+     * Phase 4 观战模式：获取当前观战视角的对战状态（中立视角）。
      *
-     * 与 `get` 类似，但不要求调用者是游戏参与者。
-     * 视角固定为 player 方（与观战 packet 推送一致）。
-     * 返回 initPacket（如果有且只有一个 packet）让观战者从开局重建状态。
+     * 与 `get` 类似，但不要求调用者是游戏参与者，且用 `translateFightForSpectator`
+     * 隐藏双方手牌信息。返回 initPacket（如果有且只有一个 packet）让观战者从开局重建状态。
      */
     spectate: protectedProcedure
         .input(z.object({
@@ -322,9 +359,9 @@ export const gameRouter = router({
             // 引导用户使用回放系统查看历史对局。
             if (!host) throw new TRPCError({ code: 'NOT_FOUND', message: 'Game is no longer live. Use replay instead.' });
 
-            // 观战视角固定为 player 方
+            // 观战视角固定为 player 方，但用 translateFightForSpectator 隐藏双方手牌信息
             const side = 'player' as const;
-            const outboundFight = translateFight(host.fight, side);
+            const outboundFight = translateFightForSpectator(host.fight, side);
 
             let initPacket: FightPacket | null = null;
             if (input.includeInitPacket) {
@@ -337,7 +374,7 @@ export const gameRouter = router({
                 else if (!firstPacket) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Game has not started' });
             }
 
-            const outboundInitPacket: FightPacket | null = initPacket && translatePacket(initPacket, side);
+            const outboundInitPacket: FightPacket | null = initPacket && translatePacketForSpectator(initPacket, side);
 
             const lastPacket = await prisma.gamePacket.findFirst({
                 where: { gameId: input.gameId },
@@ -494,12 +531,11 @@ export const gameRouter = router({
                     triggerFightPacket(sides[side], input.gameId, packet);
                 }
 
-                // Phase 4 观战模式：把 player 视角的 packet 推送到观战频道。
-                // 观战者看到的是 player 方视角（包含 player 手牌信息）。
-                // 选用 player 视角而非中立视角的理由：Client 组件复用 player 视角渲染逻辑最简单，
-                // 且观战者通过 readonly 模式不会获得操作能力。中立视角需新增 translateFightForSpectator，
-                // 留待后续优化（隐藏双方手牌）。
-                const spectatorPacket = outboundPackets.player;
+                // Phase 4 观战模式：中立视角 packet 推送。
+                // 用 translatePacketForSpectator 从原始 serverPacket 翻译，
+                // 隐藏双方手牌信息（draw/newSigil/play/mustPlay/chooseDraw 等）。
+                // 不能复用 outboundPackets.player（已 translateEvent 过，二次翻译会出错）。
+                const spectatorPacket = translatePacketForSpectator(serverPacket, 'player');
                 if (spectatorPacket) triggerSpectatorPacket(input.gameId, spectatorPacket);
 
                 const aliveSides = FIGHT_SIDES.filter(side => (

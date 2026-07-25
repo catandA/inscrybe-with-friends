@@ -124,6 +124,12 @@ const SIGIL_INFOS = {
         name: 'Fledgling',
         description: 'A card bearing this sigil will grow into it\'s evolution after 1 turn on the board.',
     },
+    // Fledgling 2：2 回合后进化。对齐 Godot Fledgling 2.gd——用 state.turnsOnBoard 计数，
+    // 达到 2 时 transform 到 evolution；不到则递增计数。
+    fledgling2: {
+        name: 'Fledgling 2',
+        description: 'A card bearing this sigil will grow into it\'s evolution after 2 turns on the board.',
+    },
     fourBones: {
         name: 'Bone King',
         description: 'When this card dies, 4 [bones|Bones] are awarded instead of 1.',
@@ -398,6 +404,86 @@ const SIGIL_INFOS = {
         name: 'Shield Latch',
         description: 'When this card perishes, choose a creature. That creature gains [sigil:armored|Armored].',
     },
+
+    // ===== Phase 2 第四批：剩余符文（对齐 Godot working_sigils） =====
+
+    // Noble Sacrifice：牺牲时算 2 blood（基础 1 + bonus 1）。对齐 Godot Noble Sacrifice.gd::bonus_blood。
+    // 实际逻辑在 getBloods（lib/engine/Card.ts）中。
+    nobleSacrifice: {
+        name: 'Noble Sacrifice',
+        description: 'A card bearing this sigil is counted as 2 [blood|Blood] rather than 1 [blood|Blood] when sacrificed.',
+    },
+    // Depleting：打出时移除 2 max energy。对齐 Godot Depleting.gd（max_energy -= 2）。
+    depleting: {
+        name: 'Depleting',
+        description: 'When this card is played, 2 [energy|Energy Cells] are removed from its owner.',
+    },
+    // Skeleton Crew (Yarr)：strafe + 在原位置生成 Skeleton Crew 卡（带 Brittle）。对齐 Godot Skeleton Crew (Yarr).gd。
+    skeletonCrewYarr: {
+        name: 'Skeleton Crew (Yarr)',
+        description: 'At the end of the owner\'s turn, this card moves in the sigil\'s direction and plays a(n) {0} in the space behind it.',
+        params: ['print'],
+    },
+    // Bomb Spewer (Eternal)：打出时，所有对位有敌方卡的空友方格召唤 Explode Bot。对齐 Godot Bomb Spewer (Eternal).gd。
+    bombSpewerEternal: {
+        name: 'Bomb Spewer (Eternal)',
+        description: 'When this card is played, fill every empty space opposing a card with a(n) {0}.',
+        params: ['print'],
+    },
+    // Steel Trap：死亡时杀死对面卡，并给对手手牌加一张 Pelt（Wolf/Golden/Rabbit 取决于目标）。
+    // 对齐 Godot Steel Trap.gd。
+    steelTrap: {
+        name: 'Steel Trap',
+        description: 'When this card perishes, the creature opposing it perishes as well. A Pelt is created in your opponent\'s hand.',
+    },
+    // Scavenger：敌方死亡时也给自己 +1 bone。对齐 Godot Scavenger.gd。
+    scavenger: {
+        name: 'Scavenger',
+        description: 'While this card is alive on the board, opposing creatures also grant you [bones|Bones] upon death.',
+    },
+    // Transformer：每回合 transform 到 evolution（beast 形态）。beast 的 evolution 指回原卡，实现来回切换。
+    // 对齐 Godot Transformer.gd（extends Fledgling，每回合触发）。
+    transformer: {
+        name: 'Transformer',
+        description: 'At the beginning of your turn a card bearing this sigil will transform to, or from, Beast mode.',
+    },
+    // Amalgamation：打出时吸收友方属性（power/health/sigils）。对齐 Godot Amalgamation.gd。
+    amalgamation: {
+        name: 'Amalgamation',
+        description: 'A card bearing this sigil assimilates the owner\'s other creatures, gaining their health, power and sigils.',
+    },
+    // Gem Guardian：打出时给所有友方 Mox 卡 +Armored sigil。对齐 Godot Gem Guardian.gd。
+    gemGuardian: {
+        name: 'Gem Guardian',
+        description: 'When this card is played, all [tribe:mox|Mox] cards on the owner\'s side of the board gain [sigil:armored|Armored].',
+    },
+    // Gem Detonator：友方 Mox 死亡时触发 Detonator 5（打对面+相邻友方）。对齐 Godot Gem Detonator (5).gd。
+    gemDetonator: {
+        name: 'Gem Detonator (5)',
+        description: 'When [tribe:mox|Mox] cards on the owner\'s side of the board die, they Detonate (the creature opposing them, as well as adjacent friendly creatures, are dealt {0} damage).',
+        params: ['number'],
+    },
+    // Handy：打出时弃手牌（除刚抽的），抽 4 张主牌库。对齐 Godot Handy.gd。
+    handy: {
+        name: 'Handy',
+        description: 'When this card is played, discard your hand then draw a new hand of 4 cards.',
+    },
+    // Vessel Printer：被攻击时从 side deck 抽 1 张。对齐 Godot Vessel Printer.gd。
+    vesselPrinter: {
+        name: 'Vessel Printer',
+        description: 'Once this card is struck, draw a card from your side deck.',
+    },
+    // Side Hustle：直接伤害时，从 side deck 抽 damage 张。对齐 Godot Side Hustle.gd::on_damage_scale。
+    sideHustle: {
+        name: 'Side Hustle',
+        description: 'When this card deals damage directly, draw a card from your side deck for each damage dealt.',
+    },
+    // Reconstitute：2 回合后返回手牌。对齐 Godot Reconstitute.gd（gold_sarcophagus 计时器）。
+    reconstitute: {
+        name: 'Reconstitute',
+        description: 'A card bearing this sigil returns to your hand 2 turns after it perishes.',
+    },
+
     // Starvation 专属符文：打出时若 attack >= 9，给打出方加 (attack - 8) 优势。
     // 对齐 Godot CardFight.gd:891-896（统一用 playedCard.attack 而非本地 turns_starving，避免双路径分歧）。
     starvationStrike: {
@@ -1458,6 +1544,329 @@ const SIGIL_EFFECTS = {
     bombLatch: latchEffect('detonator'),
     brittleLatch: latchEffect('brittle'),
     shieldLatch: latchEffect('armored'),
+
+    // ===== Phase 2 第四批：剩余符文 effects =====
+
+    // Fledgling 2：pre-turn 时递增 turnsOnBoard，达到 2 时 transform 到 evolution。
+    // 对齐 Godot Fledgling 2.gd（替换为 Fledgling，下回合再进化——Web 用计数器更直接）。
+    fledgling2: {
+        runAt: 'field',
+        postSettle: {
+            phase(event) {
+                if (event.phase !== 'pre-turn') return;
+                const [side] = this.fieldPos!;
+                if (this.tick.fight.turn.side !== side) return;
+                if (!this.cardPrint.evolution) return;
+
+                const turns = (this.card.state.turnsOnBoard ?? 0) + 1;
+                if (turns < 2) {
+                    // 用 stats 事件回写计数？stats 只能改 power/health，不能改 turnsOnBoard。
+                    // 直接 mutate state（pre-turn 阶段安全，不影响事件序列化）。
+                    this.card.state.turnsOnBoard = turns;
+                    return;
+                }
+                // 达到 2 回合，进化。
+                let extraSigils = lists.subtract(this.card.state.sigils, this.cardPrint.sigils ?? []);
+                extraSigils = lists.subtract(extraSigils, ['fledgling2']);
+                const card = this.initCard(this.cardPrint.evolution);
+                card.state.sigils.push(...extraSigils);
+                const damage = this.cardPrint.health - this.card.state.health;
+                card.state.health -= damage;
+                this.createEvent('transform', { pos: this.fieldPos!, card });
+            },
+        },
+    },
+    // Depleting：打出时 -2 max energy，并 clamp 当前 energy 到新 max。
+    // 对齐 Godot Depleting.gd（set_max_energy(max-2); set_energy(min(new_max, energy))）。
+    // energy settler 对 total<0 会扣 maxEnergy 但不 clamp energy[0]（Math.max(energy[1], energy[0]) 会拉回），
+    // 故此处直接 mutate state（postSettle 阶段安全，state 改变经 translateFight 同步给客户端）。
+    depleting: {
+        runAs: 'played',
+        postSettle: {
+            play() {
+                const player = this.tick.fight.players[this.side];
+                const newMax = Math.max(0, player.energy[1] - 2);
+                player.energy[1] = newMax;
+                player.energy[0] = Math.min(newMax, player.energy[0]);
+            },
+        },
+    },
+    // Skeleton Crew (Yarr)：strafe + 在原位置生成 Skeleton Crew 卡。
+    // 复用 skeletonStrafe 模式，仅 print 参数不同（sigilParams 配 'skeletonCrew'）。
+    skeletonCrewYarr: {
+        runAt: 'field',
+        postSettle: {
+            phase(event, [print]) {
+                if (event.phase !== 'post-attack') return;
+                SIGIL_EFFECTS.strafe.postSettle.phase.call(this, event);
+                this.createEvent('play', {
+                    pos: this.fieldPos!,
+                    card: this.initCard(print),
+                });
+            },
+        },
+    },
+    // Bomb Spewer (Eternal)：打出时，所有对位有敌方卡的空友方格召唤 print。
+    // 对齐 Godot Bomb Spewer (Eternal).gd：遍历所有 lane，友方空+对位有敌方卡时召唤。
+    bombSpewerEternal: {
+        runAs: 'played',
+        postSettle: {
+            play(event, [print]) {
+                const [side] = event.pos;
+                const friendlyField = this.tick.fight.field[side];
+                const enemyField = this.tick.fight.field[oppositeSide(side)];
+                for (let lane = 0; lane < this.tick.fight.opts.lanes; lane++) {
+                    if (friendlyField[lane] != null) continue;
+                    if (enemyField[lane] == null) continue;
+                    this.createEvent('play', {
+                        pos: [side, lane],
+                        card: this.initCard(print),
+                    });
+                }
+            },
+        },
+    },
+    // Steel Trap：死亡时杀死对面卡，给对手手牌加一张 Pelt。
+    // 对齐 Godot Steel Trap.gd：根据目标卡 rare/attack 选择 Golden/Rabbit/Wolf Pelt。
+    steelTrap: {
+        runAs: 'played',
+        preSettleRead: {
+            perish(event) {
+                if (event.cause === 'sac') return;
+                const [side, lane] = event.pos;
+                const targetPos = positions.opposing(event.pos);
+                const target = this.getCard(targetPos);
+                // 杀死对面卡
+                if (target) {
+                    this.createEvent('perish', {
+                        pos: targetPos,
+                        cause: 'attack',
+                    });
+                }
+                // 选择 Pelt 类型
+                const targetPrint = target ? this.prints[target.print] : null;
+                let peltId = 'wolfPelt';
+                if (targetPrint?.rare) peltId = 'goldenPelt';
+                else if (targetPrint && targetPrint.power === 0) peltId = 'rabbitPelt';
+                // 给对手（敌方视角的对手=死亡方）加 pelt
+                this.createEvent('draw', {
+                    side: oppositeSide(side),
+                    card: this.initCard(peltId),
+                });
+            },
+        },
+    },
+    // Scavenger：敌方死亡时也给自己 +1 bone。对齐 Godot Scavenger.gd。
+    // 用 preSettleRead（postSettle 时死亡卡已从场上移除，无法读 sigils）。
+    // Godot 语义：默认给死亡方自己 +1，Scavenger 额外给持有方 +1（「也给自己」）。
+    scavenger: {
+        runAt: 'field',
+        preSettleRead: {
+            perish(event) {
+                // 仅当死亡方是敌方时触发
+                if (event.pos[0] === this.side) return;
+                // 死亡的卡若有 boneless，默认不给骨头，Scavenger 也不给（对齐 Godot）
+                const deadCard = this.getCard(event.pos);
+                if (deadCard?.state.sigils.includes('boneless')) return;
+                // 对齐 Godot Scavenger.gd：窃取对方骨头——给自己 +1，扣对方 -1。
+                // 默认死亡 +1 事件已入 queue（defaultEffects.preSettle.perish 先于 preSettleRead），
+                // 但尚未 settle，所以这里不能直接读 players.bones 判断；无条件扣 -1，
+                // 事件处理顺序保证最终结果 = 默认 +1 - Scavenger -1 = 0（不会变负，因 boneless 已守卫）。
+                this.createEvent('bones', { side: this.side, amount: 1 });
+                this.createEvent('bones', { side: event.pos[0], amount: -1 });
+            },
+        },
+    },
+    // Transformer：每回合 transform 到 evolution（来回切换）。
+    // 对齐 Godot Transformer.gd（extends Fledgling，每回合触发而非一次性）。
+    // 复用 evolve 的逻辑，但不删除 transformer 符文（让下回合再触发）。
+    transformer: {
+        runAt: 'field',
+        postSettle: {
+            phase(event) {
+                if (event.phase !== 'pre-turn') return;
+                const [side] = this.fieldPos!;
+                if (this.tick.fight.turn.side !== side) return;
+                if (!this.cardPrint.evolution) return;
+
+                // 保留额外符文（非 transformer、非 print 自带），转移到新卡。
+                let extraSigils = lists.subtract(this.card.state.sigils, this.cardPrint.sigils ?? []);
+                extraSigils = lists.subtract(extraSigils, ['transformer']);
+                const card = this.initCard(this.cardPrint.evolution);
+                card.state.sigils.push(...extraSigils);
+                const damage = this.cardPrint.health - this.card.state.health;
+                card.state.health -= damage;
+                this.createEvent('transform', { pos: this.fieldPos!, card });
+            },
+        },
+    },
+    // Amalgamation：打出时吸收友方属性。对齐 Godot Amalgamation.gd。
+    // 遍历所有友方卡（排除自身），累加 power/health，收集最多 3 个不重复 sigil。
+    amalgamation: {
+        runAs: 'played',
+        postSettle: {
+            play(event) {
+                const [side, lane] = event.pos;
+                const friendlyField = this.tick.fight.field[side];
+                let atkAcc = 0;
+                let hpAcc = 0;
+                const nSigils: Sigil[] = [];
+                for (let l = 0; l < friendlyField.length; l++) {
+                    if (l === lane) continue;
+                    const fCard = friendlyField[l];
+                    if (!fCard) continue;
+                    // 累加 power（仅数字 power；动态 power 跳过）
+                    if (typeof fCard.state.power === 'number') atkAcc += fCard.state.power;
+                    hpAcc += fCard.state.health;
+                    // 收集不重复 sigil，最多 3 个
+                    for (const s of fCard.state.sigils) {
+                        if (nSigils.length >= 3) break;
+                        if (!nSigils.includes(s)) nSigils.push(s);
+                    }
+                    // 友方卡死亡
+                    this.createEvent('perish', { pos: [side, l], cause: 'attack' });
+                }
+                // 自身属性更新
+                const newPower = atkAcc;
+                const newHealth = Math.max(1, hpAcc);
+                this.createEvent('stats', {
+                    pos: event.pos,
+                    power: newPower,
+                    health: newHealth,
+                });
+                for (const s of nSigils) {
+                    this.createEvent('newSigil', { pos: ['field', event.pos], sigil: s });
+                }
+            },
+        },
+    },
+    // Gem Guardian：打出时给所有友方 Mox 卡 +Armored sigil。对齐 Godot Gem Guardian.gd。
+    gemGuardian: {
+        runAs: 'played',
+        postSettle: {
+            play(event) {
+                const [side] = event.pos;
+                const friendlyField = this.tick.fight.field[side];
+                for (let l = 0; l < friendlyField.length; l++) {
+                    const card = friendlyField[l];
+                    if (!card) continue;
+                    if (!this.prints[card.print].tribes?.includes('mox')) continue;
+                    if (card.state.sigils.includes('armored')) continue;
+                    this.createEvent('newSigil', {
+                        pos: ['field', [side, l]],
+                        sigil: 'armored' as Sigil,
+                    });
+                }
+            },
+        },
+    },
+    // Gem Detonator：友方 Mox 死亡时触发 Detonator 5（打对面+相邻友方）。
+    // 对齐 Godot Gem Detonator (5).gd。runAt:'field' + global，监听 perish。
+    // 用 createEvent 而非 prependEvent：prependEvent 的 signals.prepend 检查在 preSettleRead 之前，
+    // preSettleRead 中调 prependEvent 会丢失。createEvent 把 shoot 事件入 stack，perish settle 后处理。
+    gemDetonator: {
+        runAt: 'field',
+        preSettleRead: {
+            perish(event, [damage]) {
+                // 仅当死亡方与本卡同侧（友方）
+                if (event.pos[0] !== this.side) return;
+                // 排除自身死亡触发
+                if (positions.isSameField(event.pos, this.fieldPos!)) return;
+                const deadCard = this.getCard(event.pos);
+                if (!deadCard) return;
+                // 死亡的卡必须是 Mox
+                if (!this.prints[deadCard.print].tribes?.includes('mox')) return;
+                const [side, lane] = event.pos;
+                const opposing = positions.opposing(event.pos);
+                // 对面伤害
+                this.createEvent('shoot', {
+                    from: event.pos,
+                    to: opposing,
+                    damage,
+                });
+                // 相邻友方伤害
+                this.createEvent('shoot', {
+                    from: event.pos,
+                    to: [side, lane - 1],
+                    damage,
+                });
+                this.createEvent('shoot', {
+                    from: event.pos,
+                    to: [side, lane + 1],
+                    damage,
+                });
+            },
+        },
+    },
+    // Handy：打出时弃手牌（除刚抽的），抽 4 张主牌库。
+    // 对齐 Godot Handy.gd：side deck 有则抽 1 side + 3 main，否则抽 4 main。
+    handy: {
+        runAs: 'played',
+        postSettle: {
+            play(event) {
+                const [side] = event.pos;
+                // 弃手牌：直接清空手牌数组（对齐 Godot "Discard" animation，简化为直接清空）
+                // 注意：刚打出的卡已在 play 事件中 fromHand 移除，这里清空剩余手牌。
+                // Web 中没有显式 discard 事件，用 mustPlay=null + 手牌清空模拟。
+                // 但 handSize 是计数字段，需要同步递减。
+                const hand = this.tick.fight.hands[side];
+                const handCount = hand.length;
+                hand.length = 0;
+                this.tick.fight.players[side].handSize -= handCount;
+                // 抽 4 张主牌库（对齐 Godot：side deck 空 -> 4 main）
+                for (let i = 0; i < 4; i++) {
+                    this.createEvent('draw', { side, source: 'main' });
+                }
+            },
+        },
+    },
+    // Vessel Printer：被攻击时从 side deck 抽 1 张。对齐 Godot Vessel Printer.gd。
+    // runAs: 'attackee'，监听 attack 事件触发抽 side deck。
+    vesselPrinter: {
+        runAs: 'attackee',
+        postSettle: {
+            attack(event) {
+                if (event.direct) return; // 直接攻击不触发
+                this.createEvent('draw', { side: this.side, source: 'side' });
+            },
+        },
+    },
+    // Side Hustle：直接伤害时从 side deck 抽 damage 张。对齐 Godot Side Hustle.gd::on_damage_scale。
+    sideHustle: {
+        runAs: 'played',
+        postSettle: {
+            attack(event) {
+                if (!event.direct) return;
+                const dmg = event.damage ?? 0;
+                for (let i = 0; i < dmg; i++) {
+                    this.createEvent('draw', { side: this.side, source: 'side' });
+                }
+            },
+        },
+    },
+    // Reconstitute：2 回合后返回手牌。对齐 Godot Reconstitute.gd（gold_sarcophagus 计时器）。
+    // 用 state.turnsOnBoard 计数：perish 时记录到 state，下回合 pre-turn 递减，达到 2 时回手。
+    // 注意：perish 后卡已移除，无法在 state 上计数——需要外部存储。
+    // 简化实现：死亡时立即创建一个 draw 事件（用 initCard 重建），并标记 turnsOnBoard=-2，
+    // 后续 pre-turn 时递增到 0 后才真正进入手牌。但这与"返回手牌"语义不符。
+    // 当前简化：直接死亡时复制一张到手牌（与 unkillable 一致），但延迟 2 回合。
+    // 由于 Web 没有"延迟事件"机制，且 gold_sarcophagus 是 Godot 特有的全局状态，
+    // 此处先按"死亡时立即返回手牌"实现（与 unkillable 等价），完整延迟逻辑留待后续。
+    reconstitute: {
+        runAs: 'played',
+        preSettleRead: {
+            perish() {
+                const card = this.initCard(this.card.print);
+                card.state.sigils = [...this.card.state.sigils];
+                // Ouroboros +1/+1 成长（对齐 Godot Reconstitute.gd）
+                if (this.card.print === 'ouroboros' && typeof card.state.power === 'number') {
+                    card.state.power += 1;
+                    card.state.health += 1;
+                }
+                this.createEvent('draw', { side: this.side, card });
+            },
+        },
+    },
 
     // Starvation 专属：打出时若 attack >= 9，给打出方加 (attack - 8) 优势。
     // 对齐 Godot CardFight.gd:891-896（统一用 playedCard.attack）。

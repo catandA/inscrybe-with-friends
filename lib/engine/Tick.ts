@@ -1,6 +1,6 @@
 import { Action, ActionRes, isActionInvalid } from './Actions';
 import { CardPos, getBloods, getCardPower, getMoxes, initCardFromPrint } from './Card';
-import { Event, eventSettlers, isEventInvalid, translateEvent } from './Events';
+import { Event, eventSettlers, isEventInvalid, translateEvent, translateEventForSpectator } from './Events';
 import { FIGHT_SIDES, Fight, FightSide } from './Fight';
 import { rulesets } from '../defs/prints';
 import { Sigil, sigils } from '../defs/sigils';
@@ -38,6 +38,17 @@ export type FightPacket = {
 
 export function translatePacket(packet: FightPacket, side: FightSide, forClient = true) {
     const events = clone(packet.settled).map(e => translateEvent(e, side, forClient)).filter(e => e != null) as Event[];
+    return { settled: events };
+}
+
+/**
+ * 中立视角 packet 翻译（观战模式专用）。
+ *
+ * 在 `translatePacket(side)` 基础上，额外隐藏当前视角方（player）的手牌信息，
+ * 使观战者看不到任何一方的手牌内容。
+ */
+export function translatePacketForSpectator(packet: FightPacket, side: FightSide = 'player') {
+    const events = clone(packet.settled).map(e => translateEventForSpectator(e, side)).filter(e => e != null) as Event[];
     return { settled: events };
 }
 

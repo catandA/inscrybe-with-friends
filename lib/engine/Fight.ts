@@ -156,3 +156,22 @@ export function translateFight<Side extends FightSide>(hostFight: Fight<FightSid
         },
     };
 }
+
+/**
+ * 中立视角 fight 翻译（观战模式专用）。
+ *
+ * 在 `translateFight(side)` 基础上，把 `hands.player` 设为空数组，
+ * 使观战者拿不到任何一方的手牌数据。与 `translatePacketForSpectator` 配合使用，
+ * 确保初始状态和后续 packet 都不泄露手牌信息。
+ *
+ * 注意：`decks.player` 仍然返回，因为牌库数量（用于 Starvation 检测）不视为机密。
+ */
+export function translateFightForSpectator<Side extends FightSide>(hostFight: Fight<FightSide>, side: Side = 'player' as Side): Fight<'player'> {
+    const translated = translateFight(hostFight, side);
+    return {
+        ...translated,
+        hands: {
+            player: [],
+        },
+    };
+}

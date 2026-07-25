@@ -143,6 +143,10 @@ export interface CardState {
     evolved?: boolean;
     /** Armored 符文状态标记：true 表示首次免伤已用掉。 */
     armoredUsed?: boolean;
+    /** Fledgling 2 计数：在场回合数。pre-turn 阶段由 fledgling2 递增，达到阈值后触发进化。 */
+    turnsOnBoard?: number;
+    /** Steel Trap / Scavenger 等符文的 per-card 一次性触发标记。 */
+    triggered?: boolean;
 }
 
 export type Card = {
@@ -239,8 +243,12 @@ export function getBloods(prints: Record<string, CardPrint>, cards: (Card | null
         if (!card) continue;
         const print = prints[card.print];
         if (print.noSac) continue;
-        if (card.state.sigils.includes('threeSacs')) bloods += 3;
-        else bloods += 1;
+        // 对齐 Godot bonus_blood：threeSacs 直接给 3，nobleSacrifice 在基础 1 上 +1（= 2）。
+        // 两个符文同时存在时按 Godot 语义互斥（Godot 用 return），Web 中相加（3 + 1 = 4）。
+        let blood = 1;
+        if (card.state.sigils.includes('threeSacs')) blood = 3;
+        if (card.state.sigils.includes('nobleSacrifice')) blood += 1;
+        bloods += blood;
     }
     return bloods;
 }

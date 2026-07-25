@@ -2,6 +2,7 @@ import styles from './edit-decks.module.css';
 import { rulesets, userRulesetKey } from '@/lib/defs/prints';
 import { entries } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { isCardsDirty, useDeckSync } from '@/hooks/useDeckStore';
@@ -12,6 +13,7 @@ import { AssetButton } from '@/components/inputs/AssetButton';
 import { Select } from '@/components/inputs/Select';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/inputs/Button';
+import { getCardName } from '@/lib/defs/i18n';
 import { getSideDeckPrintIds } from '@/lib/engine/Card';
 import { Box } from '@/components/ui/Box';
 import { DeckCards } from '@/lib/engine/Deck';
@@ -85,6 +87,10 @@ export default function EditDecks() {
     const [deckNameInput, setDeckName] = useState('');
     const [selectedRuleset, setSelectedRuleset] = useState(Object.keys(rulesets)[0]);
     const [selectedSideDeck, setSelectedSideDeck] = useState('');
+    // singleCat 格式下当前选中的分类（其他格式为空字符串）
+    const [selectedCategory, setSelectedCategory] = useState('');
+    // 可用 prints 列表的搜索过滤
+    const [printFilter, setPrintFilter] = useState('');
 
     // Phase 3.4：拉取用户 rulesets 列表，与内置 rulesets 合并显示
     const userRulesets = trpc.rulesets.list.useQuery(void 0, {
@@ -130,6 +136,32 @@ export default function EditDecks() {
             }
         }
     }, [resolvedRuleset, selectedSideDeck, sideDecks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // 当前选中的 sideDeck 定义（用于判断格式）
+    const currentSideDeck = selectedSideDeck ? sideDecks[selectedSideDeck] : null;
+    const isSingleCat = !!currentSideDeck?.singleCat;
+    const isDraft = !!currentSideDeck?.draft;
+
+    // singleCat 分类选项：[catKey, label]
+    const categoryOptions = useMemo<[string, string][]>(() => {
+        if (!isSingleCat || !currentSideDeck?.singleCat) return [];
+        return Object.entries(currentSideDeck.singleCat).map(([cat, [count, printId]]) => {
+            const print = resolvedRuleset?.prints[printId];
+            const name = print ? getCardName(printId, print) : printId;
+            return [cat, `${name} ×${count}`] as [string, string];
+        });
+    }, [isSingleCat, currentSideDeck, resolvedRuleset]);
+
+    // draft 卡池选项：[printId, label]，仅当 count 未满时可点
+    const draftPool = useMemo(() => {
+        if (!isDraft || !currentSideDeck?.draft) return [] as [string, string][];
+        return currentSideDeck.draft.cards.map(pid => {
+            const print = resolvedRuleset?.prints[pid];
+            const name = print ? getCardName(pid, print) : pid;
+            return [pid, name] as [string, string];
+        });
+    }, [isDraft, currentSideDeck, resolvedRuleset]);
+    const draftCount = currentSideDeck?.draft?.count ?? 0;
 
     const deckName = deckNameInput.trim();
     const hasDeckSelected = !!(selectedDeckId && decks[selectedDeckId]);
@@ -224,6 +256,8 @@ export default function EditDecks() {
         setSelectedRuleset(id);
         // side deck 在 resolvedRuleset 加载后由 useEffect 自动设置
         setSelectedSideDeck('');
+        setSelectedCategory('');
+        setPrintFilter('');
         setDeck({ main: [], side: [] });
         setDeckName('');
         setSelectedDeckId(null);
@@ -232,10 +266,48 @@ export default function EditDecks() {
     /* eslint-disable react-hooks/exhaustive-deps */
     const onSideDeckSelect = useCallback((id: string) => {
         setSelectedSideDeck(id);
-        if (sideDecks[id]) {
-            setSide(getSideDeckPrintIds(sideDecks[id]));
+        setSelectedCategory('');
+        const sideDeck = sideDecks[id];
+        if (!sideDeck) {
+            setSide([]);
+        } else if (sideDeck.singleCat) {
+            // singleCat：自动选第一个分类
+            const firstCat = Object.keys(sideDeck.singleCat)[0];
+            if (firstCat) {
+                setSelectedCategory(firstCat);
+                const [count, printId] = sideDeck.singleCat[firstCat];
+                setSide(Array(count).fill(printId));
+            } else {
+                setSide([]);
+            }
+        } else {
+            // repeat / draft：使用默认展开
+            setSide(getSideDeckPrintIds(sideDeck));
         }
     }, [sideDecks]);
+    const onCategorySelect = useCallback((cat: string) => {
+        setSelectedCategory(cat);
+        const sideDeck = selectedSideDeck ? sideDecks[selectedSideDeck] : null;
+        if (sideDeck?.singleCat && sideDeck.singleCat[cat]) {
+            const [count, printId] = sideDeck.singleCat[cat];
+            setSide(Array(count).fill(printId));
+        }
+    }, [sideDecks, selectedSideDeck]);
+    const onDraftToggle = useCallback((printId: string) => {
+        setDeck(deck => {
+            const side = [...deck.side];
+            const idx = side.indexOf(printId);
+            if (idx >= 0) {
+                // 已选中：移除
+                side.splice(idx, 1);
+            } else {
+                // 未选中：检查上限
+                if (side.length >= draftCount) return deck;
+                side.push(printId);
+            }
+            return { ...deck, side };
+        });
+    }, [draftCount]);
     const onPrintSelect = useCallback((id: string) => addCard(id), []);
     const onDeckPrintSelect = useCallback((id: string, idx: number) => removeCard(idx), []);
     const onClearDeck = useCallback(() => setDeck(deck => ({ ...deck, main: [] })), []);
@@ -311,10 +383,60 @@ export default function EditDecks() {
                         value={selectedSideDeck}
                         onSelect={onSideDeckSelect}
                     />
+                    {isSingleCat && (
+                        <div className={styles.sideDeckExtra}>
+                            <Text size={12}>{t('decks.categoryLabel')}</Text>
+                            <Select
+                                options={categoryOptions}
+                                value={selectedCategory}
+                                onSelect={onCategorySelect}
+                            />
+                        </div>
+                    )}
+                    {isDraft && (
+                        <div className={styles.sideDeckExtra}>
+                            <Text size={12}>{t('decks.draftLabel', { count: deck.side.length, max: draftCount })}</Text>
+                            <div className={styles.draftPool}>
+                                {draftPool.map(([pid, name]) => {
+                                    const selected = deck.side.includes(pid);
+                                    const full = !selected && deck.side.length >= draftCount;
+                                    return (
+                                        <div
+                                            key={pid}
+                                            className={classNames(
+                                                styles.draftPoolItem,
+                                                { [styles.selected]: selected, [styles.disabled]: full },
+                                            )}
+                                            onClick={() => !full && onDraftToggle(pid)}
+                                        >
+                                            <Text size={11}>{name}</Text>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </Box>
             <div className={styles.prints}>
-                <PrintList editable showNames onSelect={onPrintSelect} ruleset={selectedRuleset} />
+                <div className={styles.printsHeader}>
+                    <Select
+                        className={styles.filterSelect}
+                        options={[]}
+                        editable
+                        placeholder={t('decks.filterPlaceholder')}
+                        content={printFilter}
+                        onEdit={setPrintFilter}
+                    />
+                    {printFilter && (
+                        <Button onClick={() => setPrintFilter('')}>
+                            <Text size={12}>{t('decks.clearFilter')}</Text>
+                        </Button>
+                    )}
+                </div>
+                <div className={styles.printsList}>
+                    <PrintList editable showNames onSelect={onPrintSelect} ruleset={selectedRuleset} filter={printFilter} />
+                </div>
             </div>
         </div>
     );

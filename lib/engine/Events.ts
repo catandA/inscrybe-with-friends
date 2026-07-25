@@ -202,7 +202,8 @@ export function isEventInvalid({ fight, host }: FightTick, event: Event) {
             break;
         }
         case 'shoot': {
-            if (!fight.field[event.from[0]][event.from[1]]) return true;
+            // from 可空：爆炸类符文（Gem Detonator/Detonator）触发时死亡卡已移除，
+            // settler 只用 to，from 仅作动画来源用。
             if (!fight.field[event.to[0]][event.to[1]]) return true;
             if (fight.field[event.to[0]][event.to[1]]?.state.health === 0) return true;
             break;
@@ -308,4 +309,42 @@ export function translateEvent(event: Event, side: FightSide, forClient: boolean
         event.from[0] = oppositeSide(event.from[0]);
     }
     return event;
+}
+
+/**
+ * 中立视角事件翻译（观战模式专用）。
+ *
+ * 在 `translateEvent(side)` 基础上，额外隐藏当前视角方（player）的手牌信息，
+ * 使观战者看不到任何一方的手牌内容。
+ *
+ * 用途：观战 packet 推送（`triggerSpectatorPacket`）和观战端点 initPacket。
+ * 与 `translateEvent` 一样会 in-place 修改 event，调用方需传入 clone。
+ *
+ * @param side 观战视角方（固定为 'player'，与 spectate 端点一致）
+ */
+export function translateEventForSpectator(event: Event, side: FightSide = 'player'): Event | null {
+    const translated = translateEvent(event, side);
+    if (!translated) return null;
+    // 隐藏当前视角方（translated 中 side === 'player' 对应原 side）的手牌信息
+    if (translated.type === 'draw' && translated.side === 'player') {
+        delete translated.source;
+        delete translated.card;
+    } else if (translated.type === 'newSigil' && translated.pos[0] === 'hand' && translated.pos[1][0] === 'player') {
+        return null;
+    } else if (translated.type === 'play' && translated.fromHand && translated.fromHand[0] === 'player') {
+        translated.fromHand[1] = 0; // hide index
+    } else if (translated.type === 'mustPlay' && translated.side === 'player') {
+        translated.card = 0; // hide index
+    }
+    if ((translated.type === 'request' || translated.type === 'response') && translated.side === 'player') {
+        if (translated.req.type === 'chooseDraw') {
+            translated.req.choices = [];
+        }
+    }
+    if (translated.type === 'response' && translated.side === 'player') {
+        if (translated.res.type === 'chooseDraw') {
+            translated.res.idx = -1;
+        }
+    }
+    return translated;
 }

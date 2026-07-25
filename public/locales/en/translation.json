@@ -74,6 +74,10 @@
         "cardCount_other": "{{count}} cards",
         "emptyDeck": "No cards in your deck, add them by selecting them on the right",
         "sideDeckLabel": "Side Deck:",
+        "categoryLabel": "Category:",
+        "draftLabel": "{{count}}/{{max}} selected (click to toggle)",
+        "filterPlaceholder": "Filter by name or id...",
+        "clearFilter": "Clear filter",
         "validation": {
             "deckSizeMin": "Main deck needs at least {{min}} cards (current {{current}})",
             "rareLimit": "{{name}} (rare) max 1 (current {{current}})",

@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { Event } from '../engine/Events';
 import { initCardFromPrint } from '../engine/Card';
 import { PRINTS, placeCard } from '../engine/__testutils__/fight';
-import { runEvents, runAction, runEventsAndRespond, firstEvent } from './__testutils__/runTick';
+import { runEvents, runAction, runEventsAndRespond, firstEvent, fillDeck } from './__testutils__/runTick';
 import { ErrorType } from '../engine/Errors';
 
 /**
@@ -879,6 +879,542 @@ describe('符文行为快照', () => {
             );
 
             expect(fight.points.player).toBe(4);
+        });
+    });
+
+    // ===== Phase 2 第四批：剩余符文行为测试 =====
+
+    describe('depleting (Depleting, -2 max energy)', () => {
+        it('打出后 max energy -2，current energy clamp 到新 max', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    fight.players.player.energy = [5, 6]; // 当前 5, max 6
+                },
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: (() => {
+                        const c = initCardFromPrint(PRINTS, 'adder');
+                        c.state.sigils = ['depleting'];
+                        return c;
+                    })(),
+                } as Event],
+            );
+
+            // max 6 - 2 = 4，current min(4, 5) = 4
+            expect(fight.players.player.energy[1]).toBe(4);
+            expect(fight.players.player.energy[0]).toBe(4);
+        });
+
+        it('max energy 不会降到负数（Math.max(0, ...) 守卫）', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    fight.players.player.energy = [1, 1];
+                },
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: (() => {
+                        const c = initCardFromPrint(PRINTS, 'adder');
+                        c.state.sigils = ['depleting'];
+                        return c;
+                    })(),
+                } as Event],
+            );
+
+            expect(fight.players.player.energy[1]).toBe(0);
+            expect(fight.players.player.energy[0]).toBe(0);
+        });
+    });
+
+    describe('scavenger (Scavenger, 敌方死亡也+1 bone)', () => {
+        it('敌方卡死亡时给 Scavenger 持有方 +1 bone', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // Scavenger 在 player lane 1
+                    const scav = placeCard(fight, 'player', 1, 'adder');
+                    scav.state.sigils = ['scavenger'];
+                    // 敌方卡在 opposing lane 0
+                    placeCard(fight, 'opposing', 0, 'adder');
+                },
+                [{ type: 'perish', pos: ['opposing', 0], cause: 'attack' } as Event],
+            );
+
+            // 对齐 Godot Scavenger.gd：默认死亡给 opposing +1，Scavenger 窃取——给 player +1，扣 opposing -1（不为负）
+            // 结果：player=1, opposing=0
+            expect(packet.settled.some(e => e.type === 'bones')).toBe(true);
+            expect(fight.players.player.bones).toBe(1);
+            expect(fight.players.opposing.bones).toBe(0);
+        });
+
+        it('友方卡死亡不触发 Scavenger', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    const scav = placeCard(fight, 'player', 1, 'adder');
+                    scav.state.sigils = ['scavenger'];
+                    placeCard(fight, 'player', 0, 'adder');
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+            );
+
+            // 友方死亡只+1（默认），Scavenger 不额外加
+            expect(fight.players.player.bones).toBe(1);
+        });
+
+        it('敌方带 boneless 死亡：Scavenger 也不触发', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    const scav = placeCard(fight, 'player', 1, 'adder');
+                    scav.state.sigils = ['scavenger'];
+                    const enemy = placeCard(fight, 'opposing', 0, 'adder');
+                    enemy.state.sigils = ['boneless'];
+                },
+                [{ type: 'perish', pos: ['opposing', 0], cause: 'attack' } as Event],
+            );
+
+            // boneless 不给骨头，Scavenger 也不给
+            expect(fight.players.player.bones).toBe(0);
+        });
+    });
+
+    describe('skeletonCrewYarr (Skeleton Crew Yarr, strafe + drop)', () => {
+        it('post-attack 阶段：移动后在原位置生成 skeletonCrew', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // 在 lane 0 放置带 skeletonCrewYarr 的卡（手动给 adder 加符文）
+                    const card = placeCard(fight, 'player', 0, 'adder');
+                    card.state.sigils = ['skeletonCrewYarr', 'strafe'];
+                    fight.turn = { side: 'player', phase: 'post-attack' };
+                },
+                [{ type: 'phase', phase: 'post-attack', side: 'player' } as Event],
+            );
+
+            // 触发了 play 事件（生成 skeletonCrew）
+            const plays = packet.settled.filter(e => e.type === 'play');
+            expect(plays.length).toBeGreaterThanOrEqual(1);
+            // 原位置或新位置应有 skeletonCrew
+            const skeletonCrewExists = fight.field.player.some(c => c?.print === 'skeletonCrew');
+            expect(skeletonCrewExists).toBe(true);
+        });
+    });
+
+    describe('bombSpewerEternal (Bomb Spewer Eternal)', () => {
+        it('打出后对位有敌方卡的空友方格召唤 explodeBot', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // 敌方卡在 lane 1 和 lane 3
+                    placeCard(fight, 'opposing', 1, 'adder');
+                    placeCard(fight, 'opposing', 3, 'adder');
+                },
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: (() => {
+                        const c = initCardFromPrint(PRINTS, 'adder');
+                        c.state.sigils = ['bombSpewerEternal'];
+                        return c;
+                    })(),
+                } as Event],
+            );
+
+            // 应在 lane 1 和 lane 3 召唤 explodeBot（lane 0 被打出卡占据）
+            expect(fight.field.player[1]?.print).toBe('explodeBot');
+            expect(fight.field.player[3]?.print).toBe('explodeBot');
+            // lane 2 对位无敌方卡，不召唤
+            expect(fight.field.player[2]).toBeNull();
+            // 触发 2 个 play 事件
+            const plays = packet.settled.filter(e => e.type === 'play');
+            expect(plays).toHaveLength(3); // 1 原始 + 2 召唤
+        });
+    });
+
+    describe('steelTrap (Steel Trap, 死亡杀对面+给 pelt)', () => {
+        it('perish 时杀死对面卡并给对手 wolfPelt', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const trap = placeCard(fight, 'player', 0, 'adder');
+                    trap.state.sigils = ['steelTrap'];
+                    // 对面卡（非 rare、非 0 攻击 → wolfPelt）
+                    const target = placeCard(fight, 'opposing', 0, 'adder');
+                    target.state.sigils = [];
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+            );
+
+            // 触发对面卡的 perish 事件
+            expect(packet.settled.some(e => e.type === 'perish')).toBe(true);
+            // 对面卡已被杀
+            expect(fight.field.opposing[0]).toBeNull();
+            // 给对手（opposing）一张 pelt
+            expect(fight.hands.opposing).toHaveLength(1);
+            expect(fight.hands.opposing[0].print).toBe('wolfPelt');
+        });
+
+        it('对面卡是 rare → 给 goldenPelt', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    const trap = placeCard(fight, 'player', 0, 'adder');
+                    trap.state.sigils = ['steelTrap'];
+                    // rare 卡（mantisGod 是 rare）
+                    placeCard(fight, 'opposing', 0, 'mantisGod');
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+            );
+
+            expect(fight.hands.opposing[0].print).toBe('goldenPelt');
+        });
+
+        it('对面卡 attack=0 → 给 rabbitPelt', async () => {
+            const { fight } = await runEvents(
+                (fight) => {
+                    const trap = placeCard(fight, 'player', 0, 'adder');
+                    trap.state.sigils = ['steelTrap'];
+                    // 0 攻击卡（nullConduit power 0）
+                    placeCard(fight, 'opposing', 0, 'nullConduit');
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+            );
+
+            expect(fight.hands.opposing[0].print).toBe('rabbitPelt');
+        });
+
+        it('sac 致死不触发 Steel Trap', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const trap = placeCard(fight, 'player', 0, 'adder');
+                    trap.state.sigils = ['steelTrap'];
+                    placeCard(fight, 'opposing', 0, 'adder');
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'sac' } as Event],
+            );
+
+            // sac 致死不触发：对面卡未死
+            expect(fight.field.opposing[0]).not.toBeNull();
+            // 无 draw 事件（未给 pelt）
+            expect(packet.settled.some(e => e.type === 'draw')).toBe(false);
+        });
+    });
+
+    describe('amalgamation (Amalgamation, 吸收友方)', () => {
+        it('打出时吸收所有友方卡的 power/health/sigils', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // 两张友方卡
+                    const a1 = placeCard(fight, 'player', 1, 'adder'); // power 2, health 2
+                    a1.state.sigils = ['airborne'];
+                    const a2 = placeCard(fight, 'player', 2, 'adder'); // power 2, health 2
+                    a2.state.sigils = ['brittle'];
+                },
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: initCardFromPrint(PRINTS, 'amalgam'), // power 0, health 1, sigils: ['amalgamation']
+                } as Event],
+            );
+
+            // 友方卡被吸收（perish）
+            expect(fight.field.player[1]).toBeNull();
+            expect(fight.field.player[2]).toBeNull();
+            // amalgam 在 lane 0
+            expect(fight.field.player[0]?.print).toBe('amalgam');
+            // 对齐 Godot Amalgamation.gd：new_data.attack = atk_acc（友方总和，不含自身），health = max(1, hp_acc)
+            // power = 2 + 2 = 4，health = max(1, 2 + 2) = 4
+            expect(fight.field.player[0]?.state.power).toBe(4);
+            expect(fight.field.player[0]?.state.health).toBe(4);
+            // 吸收了 airborne 和 brittle 两个 sigil
+            expect(fight.field.player[0]?.state.sigils).toContain('airborne');
+            expect(fight.field.player[0]?.state.sigils).toContain('brittle');
+            // 触发 stats 事件
+            expect(packet.settled.some(e => e.type === 'stats')).toBe(true);
+        });
+    });
+
+    describe('gemGuardian (Gem Guardian, Mox +Armored)', () => {
+        it('打出时给所有友方 Mox 卡 +Armored sigil', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // 两张友方 Mox 卡
+                    placeCard(fight, 'player', 1, 'moxG');
+                    placeCard(fight, 'player', 2, 'moxB');
+                    // 一张非 Mox 友方卡
+                    placeCard(fight, 'player', 3, 'adder');
+                },
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: (() => {
+                        const c = initCardFromPrint(PRINTS, 'adder');
+                        c.state.sigils = ['gemGuardian'];
+                        return c;
+                    })(),
+                } as Event],
+            );
+
+            // Mox 卡获得 armored
+            expect(fight.field.player[1]?.state.sigils).toContain('armored');
+            expect(fight.field.player[2]?.state.sigils).toContain('armored');
+            // 非 Mox 卡不获得
+            expect(fight.field.player[3]?.state.sigils).not.toContain('armored');
+            // 2 个 newSigil 事件
+            const newSigils = packet.settled.filter(e => e.type === 'newSigil');
+            expect(newSigils).toHaveLength(2);
+        });
+    });
+
+    describe('gemDetonator (Gem Detonator 5, Mox 死亡爆炸)', () => {
+        it('友方 Mox 死亡时打对面+相邻友方各 5 伤', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // Gem Detonator 持有者在 player lane 0
+                    const det = placeCard(fight, 'player', 0, 'adder');
+                    det.state.sigils = ['gemDetonator'];
+                    det.state.health = 10;
+                    // 友方 Mox 在 player lane 1（将死亡）
+                    const mox = placeCard(fight, 'player', 1, 'moxG');
+                    mox.state.health = 1;
+                    // 对面卡（mox 对位）
+                    const target = placeCard(fight, 'opposing', 1, 'adder');
+                    target.state.health = 10;
+                },
+                [{ type: 'perish', pos: ['player', 1], cause: 'attack' } as Event],
+            );
+
+            // 触发 shoot 事件
+            const shoots = packet.settled.filter(e => e.type === 'shoot');
+            expect(shoots.length).toBeGreaterThanOrEqual(1);
+            // 对面卡受伤（10 - 5 = 5）
+            expect(fight.field.opposing[1]?.state.health).toBe(5);
+            // Gem Detonator 持有者（相邻友方）受伤（10 - 5 = 5）
+            expect(fight.field.player[0]?.state.health).toBe(5);
+        });
+
+        it('非 Mox 友方死亡不触发', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const det = placeCard(fight, 'player', 0, 'adder');
+                    det.state.sigils = ['gemDetonator'];
+                    det.state.health = 10;
+                    // 友方非 Mox 在 player lane 1
+                    const nonMox = placeCard(fight, 'player', 1, 'adder');
+                    nonMox.state.health = 1;
+                },
+                [{ type: 'perish', pos: ['player', 1], cause: 'attack' } as Event],
+            );
+
+            // 无 shoot 事件
+            expect(packet.settled.some(e => e.type === 'shoot')).toBe(false);
+            expect(fight.field.player[0]?.state.health).toBe(10);
+        });
+
+        it('敌方 Mox 死亡不触发（仅友方 Mox）', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const det = placeCard(fight, 'player', 0, 'adder');
+                    det.state.sigils = ['gemDetonator'];
+                    det.state.health = 10;
+                    // 敌方 Mox
+                    const enemyMox = placeCard(fight, 'opposing', 1, 'moxG');
+                    enemyMox.state.health = 1;
+                },
+                [{ type: 'perish', pos: ['opposing', 1], cause: 'attack' } as Event],
+            );
+
+            expect(packet.settled.some(e => e.type === 'shoot')).toBe(false);
+            expect(fight.field.player[0]?.state.health).toBe(10);
+        });
+    });
+
+    describe('handy (Handy, 弃手牌+抽 4)', () => {
+        it('打出后清空手牌并抽 4 张主牌库', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // 预填 3 张手牌
+                    fight.hands.player.push(
+                        initCardFromPrint(PRINTS, 'adder'),
+                        initCardFromPrint(PRINTS, 'adder'),
+                        initCardFromPrint(PRINTS, 'adder'),
+                    );
+                    fight.players.player.handSize = 3;
+                },
+                [{
+                    type: 'play',
+                    pos: ['player', 0],
+                    card: (() => {
+                        const c = initCardFromPrint(PRINTS, 'adder');
+                        c.state.sigils = ['handy'];
+                        return c;
+                    })(),
+                } as Event],
+                {
+                    setupHost: (fight, host) => {
+                        fillDeck(fight, host, 'player', 'main', ['adder', 'adder', 'adder', 'adder']);
+                    },
+                },
+            );
+
+            // 手牌被清空，然后抽 4 张
+            expect(fight.hands.player).toHaveLength(4);
+            // handSize 同步：3 - 3 + 4 = 4
+            expect(fight.players.player.handSize).toBe(4);
+            // 4 个 draw 事件
+            const draws = packet.settled.filter(e => e.type === 'draw');
+            expect(draws).toHaveLength(4);
+        });
+    });
+
+    describe('vesselPrinter (Vessel Printer, 被攻击抽 side)', () => {
+        it('被攻击时从 side deck 抽 1 张', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const printer = placeCard(fight, 'opposing', 0, 'adder');
+                    printer.state.sigils = ['vesselPrinter'];
+                    placeCard(fight, 'player', 0, 'adder');
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
+                {
+                    setupHost: (fight, host) => {
+                        fillDeck(fight, host, 'opposing', 'side', ['adder', 'adder', 'adder']);
+                    },
+                },
+            );
+
+            // 触发 draw 事件，source='side'
+            const draws = packet.settled.filter(e => e.type === 'draw');
+            expect(draws).toHaveLength(1);
+            expect((draws[0] as Extract<Event, { type: 'draw' }>).source).toBe('side');
+        });
+
+        it('direct attack 不触发', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const printer = placeCard(fight, 'opposing', 0, 'adder');
+                    printer.state.sigils = ['vesselPrinter'];
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0], direct: true } as Event],
+                {
+                    setupHost: (fight, host) => {
+                        fillDeck(fight, host, 'opposing', 'side', ['adder', 'adder', 'adder']);
+                    },
+                },
+            );
+
+            expect(packet.settled.some(e => e.type === 'draw')).toBe(false);
+        });
+    });
+
+    describe('sideHustle (Side Hustle, direct damage 抽 side)', () => {
+        it('direct attack 时抽 damage 张 side deck', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const hustler = placeCard(fight, 'player', 0, 'adder');
+                    hustler.state.sigils = ['sideHustle'];
+                    hustler.state.power = 3;
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0], direct: true, damage: 3 } as Event],
+                {
+                    setupHost: (fight, host) => {
+                        fillDeck(fight, host, 'player', 'side', ['adder', 'adder', 'adder', 'adder', 'adder']);
+                    },
+                },
+            );
+
+            // 抽 3 张 side deck
+            const draws = packet.settled.filter(e => e.type === 'draw');
+            expect(draws).toHaveLength(3);
+            for (const d of draws) {
+                expect((d as Extract<Event, { type: 'draw' }>).source).toBe('side');
+            }
+        });
+
+        it('非 direct attack 不触发', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const hustler = placeCard(fight, 'player', 0, 'adder');
+                    hustler.state.sigils = ['sideHustle'];
+                    hustler.state.power = 3;
+                    placeCard(fight, 'opposing', 0, 'adder');
+                },
+                [{ type: 'attack', from: ['player', 0], to: ['opposing', 0] } as Event],
+                {
+                    setupHost: (fight, host) => {
+                        fillDeck(fight, host, 'player', 'side', ['adder', 'adder', 'adder', 'adder', 'adder']);
+                    },
+                },
+            );
+
+            expect(packet.settled.some(e => e.type === 'draw')).toBe(false);
+        });
+    });
+
+    describe('reconstitute (Reconstitute, 死亡复制到手牌)', () => {
+        it('perish 后复制一张到手牌（简化实现，对齐 unkillable）', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const card = placeCard(fight, 'player', 0, 'adder');
+                    card.state.sigils = ['reconstitute'];
+                },
+                [{ type: 'perish', pos: ['player', 0], cause: 'attack' } as Event],
+            );
+
+            expect(packet.settled.some(e => e.type === 'draw')).toBe(true);
+            expect(fight.hands.player).toHaveLength(1);
+            expect(fight.hands.player[0].print).toBe('adder');
+            // 复制体保留 reconstitute
+            expect(fight.hands.player[0].state.sigils).toContain('reconstitute');
+        });
+    });
+
+    describe('fledgling2 (Fledgling 2, 2 回合后进化)', () => {
+        it('第 1 回合 pre-turn：仅计数，不进化', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // direWolfPup 自带 evolve；手动换为 fledgling2
+                    const pup = placeCard(fight, 'player', 0, 'direWolfPup');
+                    pup.state.sigils = ['fledgling2'];
+                    pup.state.turnsOnBoard = 0;
+                },
+                [{ type: 'phase', phase: 'pre-turn', side: 'player' } as Event],
+            );
+
+            // 未进化：仍是 direWolfPup
+            expect(fight.field.player[0]?.print).toBe('direWolfPup');
+            // turnsOnBoard 递增到 1
+            expect(fight.field.player[0]?.state.turnsOnBoard).toBe(1);
+            // 无 transform 事件
+            expect(packet.settled.some(e => e.type === 'transform')).toBe(false);
+        });
+
+        it('第 2 回合 pre-turn：进化为 direWolf', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    const pup = placeCard(fight, 'player', 0, 'direWolfPup');
+                    pup.state.sigils = ['fledgling2'];
+                    pup.state.turnsOnBoard = 1; // 已过 1 回合
+                },
+                [{ type: 'phase', phase: 'pre-turn', side: 'player' } as Event],
+            );
+
+            // 进化为 direWolf
+            expect(fight.field.player[0]?.print).toBe('direWolf');
+            // 触发 transform 事件
+            expect(packet.settled.some(e => e.type === 'transform')).toBe(true);
+        });
+    });
+
+    describe('transformer (Transformer, 每回合切换)', () => {
+        it('pre-turn 时 transform 到 evolution', async () => {
+            const { fight, packet } = await runEvents(
+                (fight) => {
+                    // direWolfPup + transformer（手动加）
+                    const card = placeCard(fight, 'player', 0, 'direWolfPup');
+                    card.state.sigils = ['transformer'];
+                },
+                [{ type: 'phase', phase: 'pre-turn', side: 'player' } as Event],
+            );
+
+            // 进化为 direWolf
+            expect(fight.field.player[0]?.print).toBe('direWolf');
+            expect(packet.settled.some(e => e.type === 'transform')).toBe(true);
         });
     });
 });

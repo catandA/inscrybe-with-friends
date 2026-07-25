@@ -14,15 +14,16 @@ import { subscribeSpectatorGameEnd, subscribeSpectatorPacket } from '@/lib/pushe
 import { useTranslation } from 'react-i18next';
 
 /**
- * Phase 4 观战模式：观战者侧页面。
+ * Phase 4 观战模式：观战者侧页面（中立视角）。
  *
  * 与 `game.tsx` 类似但只读——观战者不能发送 action/response，
  * 只订阅 `private-spectate@{gameId}` 频道接收 packet 推送。
  *
- * 视角固定为 player 方（与 spectate 端点和 triggerSpectatorPacket 一致）。
+ * 视角为中立（spectate 端点用 translateFightForSpectator 隐藏双方手牌，
+ * triggerSpectatorPacket 用 translatePacketForSpectator 隐藏双方手牌事件）。
  * Client 以 readonly 模式渲染，隐藏手牌 UI、禁用交互。
  *
- * 断线重连：与 game.tsx 类似，用 lastSeenPacketId + getPacketsSince 拉取错过的 packet。
+ * 断线重连：用 lastSeenPacketId + getSpectatorPacketsSince 拉取错过的 packet。
  */
 export default function Spectate() {
     const { t } = useTranslation();
@@ -69,9 +70,10 @@ export default function Spectate() {
         if (willPlayInit) useGameStore.getState().handleSpectatorPacket(data.id, data.initPacket!);
 
         // 断线重连：如果本地记录的 lastSeenPacketId 落后于服务端最新 packet，拉取错过的 packet
+        // 用 getSpectatorPacketsSince（中立视角，不要求参与者身份）
         const lastSeen = spectatorGame.lastSeenPacketId;
         if (lastSeen && data.lastPacketId && lastSeen !== data.lastPacketId) {
-            trpcProxy.game.getPacketsSince.query({
+            trpcProxy.game.getSpectatorPacketsSince.query({
                 gameId: data.id,
                 afterPacketId: lastSeen,
             }).then(result => {
