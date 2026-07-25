@@ -55,6 +55,21 @@ export const userRouter = router({
      *
      * 注册成功后客户端应跳转到登录页让用户用 `signIn('credentials', { email, password })` 登录。
      * 不自动登录是为了避免 Credentials provider 与本 mutation 的责任重叠（也方便测试）。
+     *
+     * Phase 6.4 设计 bug 修复：移除 email @unique 后，OAuth provider 创建的 User
+     * 也会带 email（如 GitHub 公开 email=3047354896@qq.com），这种 User 的 passwordHash
+     * 是 null。若用户随后用同一 email 来注册邮箱密码，旧逻辑一律报 CONFLICT「Email already
+     * registered」，用户永远无法给已绑过的 OAuth 账号补密码。
+     *
+     * 现细分两种情况：
+     * - 现有 User 没有 passwordHash（仅 OAuth-only 账号）：把它「升级」——写入
+     *   bcrypt 哈希 + 用注册表单的 name 覆盖（便于用户自定义用户名），返回 upgraded: true。
+     *   前端据此显示「已绑定到 OAuth 账号，现可用邮箱密码登录」。
+     * - 现有 User 已有 passwordHash（真凭据账号）：仍报 CONFLICT，邮箱密码账号唯一。
+     *
+     * TOCTOU：findFirst → update 不是事务，理论上两个并发请求都可能命中 id=null 的
+     * OAuth-only User 并各自 update 最后写入的胜出——但 update 只写 passwordHash/name，
+     * 不会重复创建账号，账号数仍唯一，可接受。
      */
     register: publicProcedure
         .input(z.object({
@@ -65,7 +80,17 @@ export const userRouter = router({
         .mutation(async ({ input }) => {
             const existing = await prisma.user.findFirst({ where: { email: input.email } });
             if (existing) {
-                throw new TRPCError({ code: 'CONFLICT', message: 'Email already registered' });
+                if (existing.passwordHash) {
+                    // 真凭据账号：保持邮箱密码账号唯一。
+                    throw new TRPCError({ code: 'CONFLICT', message: 'Email already registered' });
+                }
+                // 仅 OAuth 账号：补上密码（升级），不创建新账号以免重复用户。
+                const passwordHash = await bcrypt.hash(input.password, 10);
+                await prisma.user.update({
+                    where: { id: existing.id },
+                    data: { passwordHash, name: input.name },
+                });
+                return { ok: true, upgraded: true };
             }
             const passwordHash = await bcrypt.hash(input.password, 10);
             // 邮箱密码用户没头像 URL，用一个简单占位（避免 image 字段非空约束报错）。
@@ -79,7 +104,7 @@ export const userRouter = router({
                     image: placeholderImage,
                 },
             });
-            return { ok: true };
+            return { ok: true, upgraded: false };
         }),
     /**
      * Phase 3.3 主题系统：保存用户主题（CSS 变量键值对）。
@@ -296,6 +321,9 @@ export const userRouter = router({
             //    NextAuth session key 是 `session:<token>`，value 是 userId。
             //    遍历所有 session:* key 太重，这里只更新当前 session（通过 ctx 拿不到 token，用 SCAN 批量改）。
             //    实际上用户合并后会重新登录，这里做 best-effort：扫 mergeUserId 的 session 全改成 keepUserId。
+            //    注：session.strategy 已切到 jwt（Phase 6 修复），Redis 里不再有 session:* key，
+            //    此扫描为 no-op。JWT 不可服务端失效，用户合并后必须重新登录——与上述「实际上
+            //    用户合并后会重新登录」一致。保留代码以防将来切回 database session。
             let cursor = 0;
             do {
                 const reply = await redis.scan(cursor, { MATCH: 'session:*', COUNT: 100 });

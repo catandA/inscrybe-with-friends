@@ -52,6 +52,9 @@ export default function SignIn() {
 
     const callbackUrl = (router.query.callbackUrl as string) || '/auth/success';
     const queryError = typeof router.query.error === 'string' ? router.query.error : null;
+    // Phase 6.4 fix：register mutation 把 OAuth-only User 升级为带密码后会跳过来带 ?upgraded=1。
+    // 显示一条成功提示让用户知道「现可用邮箱密码登录」，并预填邮箱展开邮箱表单方便立刻登录。
+    const upgraded = router.query.upgraded === '1';
 
     // Phase 6.5：检测 OAuthAccountNotLinked + pending merge 流程
     useEffect(() => {
@@ -63,6 +66,12 @@ export default function SignIn() {
             setPhase('conflict');
         }
     }, [router.isReady, queryError]);
+
+    // Phase 6.4 fix：从 register 跳回来带 ?upgraded=1 时展开邮箱表单方便立即登录。
+    useEffect(() => {
+        if (!router.isReady) return;
+        if (upgraded) setShowEmailForm(true);
+    }, [router.isReady, upgraded]);
 
     const onContinueMerge = async () => {
         const pendingProvider = sessionStorage.getItem('pendingProvider');
@@ -180,6 +189,7 @@ export default function SignIn() {
             </Button>
         </div>
         {showEmailForm && <form className={styles.form} onSubmit={onEmailSubmit}>
+            {upgraded && <Text size={10} className={styles.success}>{t('auth.passwordAdded')}</Text>}
             <label className={styles.label}>
                 <Text size={10}>{t('auth.email')}</Text>
                 <input

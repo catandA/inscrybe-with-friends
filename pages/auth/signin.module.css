@@ -60,6 +60,11 @@
     color: #ff6b6b;
 }
 
+/* Phase 6.4 fix：register 升级 OAuth-only 用户后跳转过来展示的成功提示 */
+.success {
+    color: #69f0ae;
+}
+
 .registerLink {
     text-align: center;
     text-decoration: underline;

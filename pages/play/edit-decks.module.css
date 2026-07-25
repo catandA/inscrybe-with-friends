@@ -109,7 +109,9 @@
     padding: 2em 4em;
     background: var(--ui-dark);
     color: var(--flow);
-    font-size: 11em;
+    /* 不显式设 font-size：让 em 单位相对继承的根字号（.play 的 0.1875em），
+       与 Button、Settings.themeBtn 等组件一致。否则 padding/border 会相对
+       放大后的字号（11em × 父字号）导致按钮巨大，参见 porting-notes.md §2。 */
 }
 
 .draftPoolItem.selected {

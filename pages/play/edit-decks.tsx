@@ -379,7 +379,7 @@ export default function EditDecks() {
                 <div className={styles.sideDeckSelector}>
                     <Text size={14}>{t('decks.sideDeckLabel')}</Text>
                     <Select
-                        options={sideEntries.map(([id, sideDeck]) => [id, sideDeck.name])}
+                        options={sideEntries.map(([id, sideDeck]) => [id, t(`decks.sideDeckNames.${id}`, { defaultValue: sideDeck.name })])}
                         value={selectedSideDeck}
                         onSelect={onSideDeckSelect}
                     />

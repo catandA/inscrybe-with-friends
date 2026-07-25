@@ -89,6 +89,15 @@
         "draftLabel": "已选 {{count}}/{{max}} 张（点击切换）",
         "filterPlaceholder": "按名称或 id 筛选...",
         "clearFilter": "清除筛选",
+        "sideDeckNames": {
+            "squirrels": "松鼠",
+            "skeletons": "骷髅",
+            "vessels": "容器",
+            "moxG": "翡翠魔石",
+            "moxB": "蓝宝石魔石",
+            "moxO": "红宝石魔石",
+            "moxDraft": "魔石（轮抽）"
+        },
         "validation": {
             "deckSizeMin": "主牌组至少需要 {{min}} 张卡（当前 {{current}} 张）",
             "rareLimit": "{{name}}（稀有）最多 1 张（当前 {{current}} 张）",
@@ -238,6 +247,7 @@
         "invalidCredentials": "邮箱或密码错误",
         "passwordMismatch": "两次输入的密码不一致",
         "registerFailed": "注册失败",
+        "passwordAdded": "密码已设置，现可用邮箱密码登录。该邮箱已绑定到你之前的 OAuth 账号——用同一邮箱和刚设的密码登录即可。",
         "noAccountRegister": "没有账户？去注册",
         "hasAccountSignIn": "已有账户？去登录",
         "userAvatarAlt": "用户头像",

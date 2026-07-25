@@ -24,7 +24,15 @@ export default function Register() {
     const [error, setError] = useState<string | null>(null);
 
     const register = trpc.user.register.useMutation({
-        onSuccess: () => router.push('/auth/signin'),
+        onSuccess: (data) => {
+            // Phase 6.4 fix：若返回 upgraded=true，说明原本是 OAuth 账号（同名 GitHub/Discord 用
+            // 同一 email 登录过），现在给它补了密码——用户现可用邮箱密码登录。
+            // 跳登录页前在 URL 里带一个 hint 让登录页显示「已绑定到 OAuth 账号」的提示。
+            router.push({
+                pathname: '/auth/signin',
+                query: data?.upgraded ? { upgraded: '1' } : {},
+            });
+        },
         onError: (err) => {
             setError(err.message || t('auth.registerFailed'));
         },

@@ -39,7 +39,7 @@ const App: AppType<{ session: any }> = ({ Component, pageProps, ...appProps }) =
     // 旧版把 useQuery 放在 `if (isPlayPath)` 里，导致 /play 与非 /play 路径间导航时
     // hook 数量变化，触发 "Rendered fewer/more hooks than expected" 错误。
     // 用 enabled 控制是否发请求，hook 本身始终调用。
-    const { data: session } = trpc.user.getSession.useQuery(void 0, {
+    const { data: session, isLoading } = trpc.user.getSession.useQuery(void 0, {
         refetchOnWindowFocus: false,
         enabled: isPlayPath,
     });
@@ -51,6 +51,14 @@ const App: AppType<{ session: any }> = ({ Component, pageProps, ...appProps }) =
     }
 
     if (isPlayPath) {
+        // Phase 6.6 修复：客户端导航（如邮箱登录后 router.push('/play')）无 SSR 预取，
+        // useQuery 首次渲染 data=undefined（loading 中）。旧代码 !session 把 loading
+        // 当成「未登录」直接 signIn() 跳回登录页，导致邮箱登录后无限重定向。
+        // OAuth 不受影响因为整页跳转有 SSR 预取，data 首次渲染就有值。
+        // 修：等 loading 结束再判断。loading 中渲染空白页等一帧。
+        if (!session && isLoading) {
+            return <div></div>;
+        }
         if (!session) {
             if (isClient) signIn();
             return <div></div>;

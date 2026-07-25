@@ -89,6 +89,15 @@
         "draftLabel": "{{count}}/{{max}} selected (click to toggle)",
         "filterPlaceholder": "Filter by name or id...",
         "clearFilter": "Clear filter",
+        "sideDeckNames": {
+            "squirrels": "Squirrels",
+            "skeletons": "Skeletons",
+            "vessels": "Vessels",
+            "moxG": "Emerald Mox",
+            "moxB": "Sapphire Mox",
+            "moxO": "Ruby Mox",
+            "moxDraft": "Mox (Draft)"
+        },
         "validation": {
             "deckSizeMin": "Main deck needs at least {{min}} cards (current {{current}})",
             "rareLimit": "{{name}} (rare) max 1 (current {{current}})",
@@ -238,6 +247,7 @@
         "invalidCredentials": "Invalid email or password",
         "passwordMismatch": "Passwords do not match",
         "registerFailed": "Registration failed",
+        "passwordAdded": "Password set — you can now sign in with email + password. This email is already linked to your previous OAuth account; sign in with the same email and the password you just set.",
         "noAccountRegister": "No account? Register",
         "hasAccountSignIn": "Already have an account? Sign in",
         "userAvatarAlt": "User avatar",

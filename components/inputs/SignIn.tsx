@@ -57,6 +57,10 @@ export function SignInButton() {
         return () => window.removeEventListener('message', listener);
     }, [t]);
 
+    // loading 中不渲染按钮：/play 页面未登录会被 _app.tsx 跳转，loading 时显示「登录」按钮
+    // 既无意义又会让已登录用户（useSession 慢于 tRPC getSession）误以为自己没登录去点。
+    if (session.status === 'loading') return null;
+
     const onSignIn = () => {
         if (pending) return;
         window.open('/auth/signin', t('auth.signIn'), 'width=500,height=800');
