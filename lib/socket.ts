@@ -8,11 +8,17 @@ import { FightPacket } from './engine/Tick';
  * 与服务端同源（避免 CORS），path 为 `/api/socket.io`。
  * 鉴权走同源 cookie（withCredentials），不再需要像 Pusher 那样单独 authenticate。
  * `autoConnect: false` 让 _app.tsx 在登录后再手动 connect。
+ *
+ * transports: ['websocket', 'polling']
+ *   优先 WebSocket（低延迟），失败自动降级到 polling（兼容性高）。
+ *   国内公网环境常出现 WebSocket upgrade 被 ISP/云网络设备重置，
+ *   降级到 polling 保证基本可用性（延迟略高但功能完整）。
  */
 export const socketClient: Socket = io({
     path: '/api/socket.io',
     withCredentials: true,
     autoConnect: false,
+    transports: ['websocket', 'polling'],
 });
 
 /**

@@ -43,7 +43,7 @@ export const Client = memo(function Client({ id, className, debug, readonly }: C
     }, [id]);
 
     return <div className={classNames(styles.root, className)} data-readonly={readonly || null}>
-        <ErrorBoundary fallbackRender={ClientError}>
+        <ErrorBoundary FallbackComponent={ClientError}>
             {client ? <div className={styles.client} style={{
                 '--lane-count': client.fight.opts.lanes,
                 ...animationVars,

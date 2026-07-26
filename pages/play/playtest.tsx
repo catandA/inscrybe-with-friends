@@ -20,7 +20,10 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 
 export default function PlayTest() {
-    return <ErrorBoundary fallbackRender={TheError}>
+    // 用 FallbackComponent 而非 fallbackRender：ErrorBoundary 是 class 组件，
+    // fallbackRender 在 render() 内直接调用，不能用 hooks（useTranslation 会触发 React #321）。
+    // FallbackComponent 被当作独立组件渲染，hooks 合法。
+    return <ErrorBoundary FallbackComponent={TheError}>
         <PlayTestPage />
     </ErrorBoundary>;
 }
