@@ -7,7 +7,7 @@ import { useClientStore } from '@/hooks/useClientStore';
 import { createFight } from '@/lib/engine/Fight';
 import { clone } from '@/lib/utils';
 import { Text } from '@/components/ui/Text';
-import { subscribeGameEnd, subscribeGamePacket } from '@/lib/socket';
+import { subscribeGameChat, subscribeGameEnd, subscribeGamePacket } from '@/lib/socket';
 import { Client } from '@/components/client/Client';
 import { Button } from '@/components/inputs/Button';
 import { Box } from '@/components/ui/Box';
@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { useResolvedRuleset } from '@/hooks/useResolvedRuleset';
 import { defaultFightOptions, zFightOptions } from '@/lib/online/z';
 import { useMemo } from 'react';
+import { ChatBox } from '@/components/chat/ChatBox';
+import type { ChatMessagePayload } from '@/server/socket';
 
 export default function Game() {
     const { t } = useTranslation();
@@ -47,6 +49,29 @@ export default function Game() {
 
     const [debug, setDebug] = useState(false);
     const [gameEndMessage, setGameEndMessage] = useState<string | null>(null);
+
+    // 对局内聊天：拉取历史 + Socket 订阅新消息 + 发送 mutation
+    // 只在 gameId 与 lobbyId 都确定时启用 history 查询
+    const chatHistory = trpc.chat.historyForGame.useQuery({ gameId: gameId! }, {
+        enabled: !!gameId,
+        refetchOnWindowFocus: false,
+    });
+    const [chatMessages, setChatMessages] = useState<ChatMessagePayload[]>([]);
+    useEffect(() => {
+        if (chatHistory.data) setChatMessages(chatHistory.data);
+    }, [chatHistory.data]);
+    const sendChat = trpc.chat.sendToGame.useMutation();
+    const onSendChat = async (content: string) => {
+        if (!gameId) return;
+        await sendChat.mutateAsync({ gameId, lobbyId, content });
+    };
+    // 订阅 game:chat：玩家与观战者都通过同一房间接收
+    useEffect(() => {
+        if (!gameId) return;
+        return subscribeGameChat(gameId, (message) => {
+            setChatMessages(prev => [...prev, message]);
+        });
+    }, [gameId]);
 
     useEffect(() => {
         if (!game.data) return;
@@ -114,6 +139,14 @@ export default function Game() {
     return <div className={styles.game}> {(clientReady && gameId)
         ? <div className={styles.clientRoot}>
             <Client className={styles.client} id={gameId} debug={debug} />
+            {/* 对局内聊天框：默认折叠，点击标题栏展开。仅在对局进行中显示。 */}
+            {!gameEndMessage && <ChatBox
+                className={styles.chatPanel}
+                title={t('game.chatTitle')}
+                messages={chatMessages}
+                onSend={onSendChat}
+                defaultCollapsed
+            />}
             {gameEndMessage && <div className={styles.gameEndBackdrop}>
                 <Box className={styles.gameEnd}>
                     <Text size={12}>{gameEndMessage}</Text>

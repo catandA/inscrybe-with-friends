@@ -10,8 +10,10 @@ import { Text } from '@/components/ui/Text';
 import { Box } from '@/components/ui/Box';
 import { Button } from '@/components/inputs/Button';
 import { Client } from '@/components/client/Client';
-import { subscribeSpectatorGameEnd, subscribeSpectatorPacket } from '@/lib/socket';
+import { subscribeGameChat, subscribeSpectatorGameEnd, subscribeSpectatorPacket } from '@/lib/socket';
 import { useTranslation } from 'react-i18next';
+import { ChatBox } from '@/components/chat/ChatBox';
+import type { ChatMessagePayload } from '@/server/socket';
 
 /**
  * Phase 4 观战模式：观战者侧页面（中立视角）。
@@ -50,6 +52,27 @@ export default function Spectate() {
     const clientReady = useClientStore(state => !!(gameId && state.clients[gameId])) && !spectate.isError;
 
     const [gameEndMessage, setGameEndMessage] = useState<string | null>(null);
+
+    // 对局内聊天：观战者也能发言（chat.sendToGame 校验 lobby 成员身份而非 GamePlayer）
+    const chatHistory = trpc.chat.historyForGame.useQuery({ gameId: gameId! }, {
+        enabled: !!gameId,
+        refetchOnWindowFocus: false,
+    });
+    const [chatMessages, setChatMessages] = useState<ChatMessagePayload[]>([]);
+    useEffect(() => {
+        if (chatHistory.data) setChatMessages(chatHistory.data);
+    }, [chatHistory.data]);
+    const sendChat = trpc.chat.sendToGame.useMutation();
+    const onSendChat = async (content: string) => {
+        if (!gameId) return;
+        await sendChat.mutateAsync({ gameId, lobbyId, content });
+    };
+    useEffect(() => {
+        if (!gameId) return;
+        return subscribeGameChat(gameId, (message) => {
+            setChatMessages(prev => [...prev, message]);
+        });
+    }, [gameId]);
 
     // 初始化 client + spectator game + 拉取错过的 packet（断线重连）
     useEffect(() => {
@@ -114,6 +137,14 @@ export default function Spectate() {
                 <Text size={10}>{t('spectate.badge')}</Text>
             </div>
             <Client className={styles.client} id={gameId} readonly />
+            {/* 对局内聊天框：观战者也能发言。默认折叠避免遮挡棋盘。 */}
+            {!gameEndMessage && <ChatBox
+                className={styles.chatPanel}
+                title={t('game.chatTitle')}
+                messages={chatMessages}
+                onSend={onSendChat}
+                defaultCollapsed
+            />}
             {gameEndMessage && <div className={styles.gameEndBackdrop}>
                 <Box className={styles.gameEnd}>
                     <Text size={12}>{gameEndMessage}</Text>

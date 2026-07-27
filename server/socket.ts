@@ -22,8 +22,12 @@ let io: IOServer | null = null;
  *
  * 房间映射（对应原 Pusher 频道）：
  * - `user:{userId}` —— 个人房间，对应原 user channel（接收 game-packet / game-end）
- * - `lobby:{lobbyId}` —— 大厅房间，对应原 `private-lobby@{id}`（接收 refetch / game-start）
+ * - `lobby:{lobbyId}` —— 大厅房间，对应原 `private-lobby@{id}`（接收 refetch / game-start / chat）
  * - `spectate:{gameId}` —— 观战房间，对应原 `private-spectate@{gameId}`
+ * - `game:{gameId}` —— 对局聊天房间（玩家 + 观战者都加入，接收 game:chat）
+ *
+ * 全局广播（无房间，io.emit）：
+ * - `lobby-list:refetch` —— 公开大厅列表变化时通知所有用户重拉 listPublic
  */
 export async function setupSocketIO(httpServer: HTTPServer) {
     io = new IOServer(httpServer, {
@@ -80,6 +84,19 @@ export async function setupSocketIO(httpServer: HTTPServer) {
         });
         socket.on('spectate:leave', (gameId: string) => {
             socket.leave(`spectate:${gameId}`);
+        });
+
+        // 对局聊天房间：玩家与观战者都加入，game:chat 事件广播到此房间。
+        // 与 spectate:{gameId} 分开，因为 spectate 房间只推 packet，
+        // 不应让观战者通过订阅 packet 来收聊天（语义混淆）。
+        // 校验 game 存在；不强制是参与者，观战者也可加入聊天。
+        socket.on('game:join', async (gameId: string, ack?: () => void) => {
+            const game = await prisma.game.findFirst({ where: { id: gameId } });
+            if (game) socket.join(`game:${gameId}`);
+            ack?.();
+        });
+        socket.on('game:leave', (gameId: string) => {
+            socket.leave(`game:${gameId}`);
         });
     });
 }
@@ -140,6 +157,33 @@ export function triggerSpectatorGameEnd(gameId: string, message: string) {
     } satisfies GameEndMessage);
 }
 
+/**
+ * 公开大厅列表变更：广播给所有已连接客户端。
+ * 客户端收到后重拉 trpc.lobbies.listPublic。
+ *
+ * 触发场景：lobby 创建/删除、isPublic 切换、lobby 名称变更。
+ * 不能增量推送——客户端持有的是 listPublic 查询结果，必须用 refetch 来重算。
+ */
+export function triggerLobbyListRefetch() {
+    getIO()?.emit('lobby-list:refetch', {});
+}
+
+/**
+ * 大厅聊天：向 `lobby:{lobbyId}` 房间推送新消息。
+ * 客户端订阅后追加到本地消息列表，无需重拉 history。
+ */
+export function triggerLobbyChat(lobbyId: string, message: ChatMessagePayload) {
+    getIO()?.to(`lobby:${lobbyId}`).emit('lobby:chat', message);
+}
+
+/**
+ * 对局聊天：向 `game:{gameId}` 房间推送新消息。
+ * 玩家和观战者都加入此房间，因此都能收到。
+ */
+export function triggerGameChat(gameId: string, message: ChatMessagePayload) {
+    getIO()?.to(`game:${gameId}`).emit('game:chat', message);
+}
+
 // === 类型导出（与原 server/pusher.ts 兼容，方便调用方 import 不变） ===
 
 export type LobbyGameEnd = {
@@ -159,4 +203,20 @@ export type SpectatorGamePacket = {
 export type GameEndMessage = {
     gameId: string;
     message: string;
+};
+
+/**
+ * 聊天消息载荷。客户端用此类型渲染消息列表，不直接渲染 Prisma 模型。
+ * - id：消息 id（用于 React key 与去重）
+ * - userId / name / image：发送者标识与展示信息
+ * - content：消息正文
+ * - createdAt：ISO 时间字符串（Date.toISOString()）
+ */
+export type ChatMessagePayload = {
+    id: string;
+    userId: string;
+    name: string;
+    image: string;
+    content: string;
+    createdAt: string;
 };

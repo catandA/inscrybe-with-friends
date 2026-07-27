@@ -63,11 +63,16 @@
     },
     "play": {
         "lobbies": "大厅",
-        "createLobby": "创建大厅",
+        "createLobby": "创建私人大厅",
+        "createPublicLobby": "创建公开大厅",
         "editDecks": "编辑牌组",
         "rulesets": "自定义规则集",
         "replays": "回放",
-        "lobbyNameFallback": "{{owner}} 的大厅"
+        "lobbyNameFallback": "{{owner}} 的大厅",
+        "publicLobbies": "公开大厅",
+        "noPublicLobbies": "暂无公开大厅。创建一个并切换为公开，让大家都能看到。",
+        "publicLobbyMeta": "房主：{{owner}}",
+        "playerCount": "{{count}} 人"
     },
     "decks": {
         "rulesetLoading": "规则集加载中...",
@@ -186,12 +191,23 @@
         "forfeitGame": "认输",
         "lobbyDeleted": "大厅已被删除",
         "lobbyNotFound": "未找到大厅",
-        "spectating": "观战中（只读）"
+        "spectating": "观战中（只读）",
+        "visibilityPublic": "公开",
+        "visibilityPrivate": "私有",
+        "makePublic": "设为公开",
+        "makePrivate": "设为私有",
+        "chatTitle": "大厅聊天"
+    },
+    "chat": {
+        "empty": "暂无消息",
+        "inputPlaceholder": "输入消息...",
+        "send": "发送"
     },
     "game": {
         "errorGettingData": "获取对局数据出错",
         "notStarted": "对局尚未开始",
-        "gettingData": "获取对局数据中..."
+        "gettingData": "获取对局数据中...",
+        "chatTitle": "对局聊天"
     },
     "spectate": {
         "errorGettingData": "获取观战数据出错",

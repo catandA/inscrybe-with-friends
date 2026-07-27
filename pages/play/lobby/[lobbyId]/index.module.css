@@ -80,3 +80,30 @@
     white-space: nowrap;
     margin-left: auto;
 }
+
+/* 公开/私密切换按钮 */
+.visibilityRow {
+    display: flex;
+    gap: 1em;
+    margin-top: 1em;
+}
+
+.visibilityBadge {
+    font-size: 8em;
+    padding: 0.5em 1.5em;
+    border: 1em solid var(--flow);
+    background: var(--ui-dark);
+    color: var(--flow);
+}
+
+.visibilityBadge.public {
+    background: var(--flow);
+    color: var(--ui-dark);
+}
+
+/* 大厅内聊天框：放在 panels 下方独立区域 */
+.chatPanel {
+    margin-top: 4em;
+    height: 200em;
+    /* 给 ChatBox 一个固定高度让它内部滚动 */
+}

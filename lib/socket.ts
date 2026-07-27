@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import type { GameEndMessage, UserGamePacket, SpectatorGamePacket } from '@/server/socket';
+import type { ChatMessagePayload, GameEndMessage, UserGamePacket, SpectatorGamePacket } from '@/server/socket';
 import { FightPacket } from './engine/Tick';
 
 /**
@@ -77,15 +77,46 @@ export function subscribeSpectatorGameEnd(gameId: string, onEnd: (message: strin
 export function subscribeLobby(lobbyId: string, handlers: {
     onRefetch?: (from: string | undefined) => void;
     onGameStart?: () => void;
+    onChat?: (message: ChatMessagePayload) => void;
 }) {
     socketClient.emit('lobby:join', lobbyId);
     const refetchListener = (data: { from?: string }) => handlers.onRefetch?.(data.from);
     const gameStartListener = () => handlers.onGameStart?.();
+    const chatListener = (message: ChatMessagePayload) => handlers.onChat?.(message);
     socketClient.on('lobby:refetch', refetchListener);
     socketClient.on('lobby:game-start', gameStartListener);
+    socketClient.on('lobby:chat', chatListener);
     return () => {
         socketClient.off('lobby:refetch', refetchListener);
         socketClient.off('lobby:game-start', gameStartListener);
+        socketClient.off('lobby:chat', chatListener);
         socketClient.emit('lobby:leave', lobbyId);
+    };
+}
+
+/**
+ * 公开大厅列表订阅（用于 /play 列表页）。
+ * 任何公开大厅变化（创建/删除/可见性切换）都会触发 onRefetch，
+ * 客户端重拉 trpc.lobbies.listPublic。
+ */
+export function subscribeLobbyList(onRefetch: () => void) {
+    const listener = () => onRefetch();
+    socketClient.on('lobby-list:refetch', listener);
+    return () => {
+        socketClient.off('lobby-list:refetch', listener);
+    };
+}
+
+/**
+ * 对局聊天订阅（用于 game.tsx 与 spectate.tsx）。
+ * 玩家与观战者都通过此函数订阅同一房间 `game:{gameId}`。
+ */
+export function subscribeGameChat(gameId: string, onChat: (message: ChatMessagePayload) => void) {
+    socketClient.emit('game:join', gameId);
+    const listener = (message: ChatMessagePayload) => onChat(message);
+    socketClient.on('game:chat', listener);
+    return () => {
+        socketClient.off('game:chat', listener);
+        socketClient.emit('game:leave', gameId);
     };
 }

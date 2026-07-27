@@ -23,3 +23,31 @@
 .gameEnd {
     width: 200em;
 }
+
+/* 对局内聊天框：固定在右下角，可折叠避免遮挡棋盘 */
+.chatPanel {
+    position: absolute;
+    right: 4em;
+    bottom: 4em;
+    width: 200em;
+    /* 折叠时只有标题栏高度 */
+    max-height: 60em;
+    transition: max-height 0.2s ease;
+    z-index: 10;
+    /* 让 ChatBox 内部 .messages 滚动而非整个面板撑高 */
+    overflow: hidden;
+}
+
+.chatPanel:not(.collapsed) {
+    max-height: 250em;
+}
+
+.chatPanel :global(.chatBox) {
+    height: 100%;
+    max-height: 250em;
+    /* 内部 messages 容器限高让滚动生效 */
+}
+
+.chatPanel :global(.messages) {
+    max-height: 180em;
+}

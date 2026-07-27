@@ -63,11 +63,16 @@
     },
     "play": {
         "lobbies": "Lobbies",
-        "createLobby": "Create Lobby",
+        "createLobby": "Create Private Lobby",
+        "createPublicLobby": "Create Public Lobby",
         "editDecks": "Edit Decks",
         "rulesets": "Custom Rulesets",
         "replays": "Replays",
-        "lobbyNameFallback": "{{owner}}'s Lobby"
+        "lobbyNameFallback": "{{owner}}'s Lobby",
+        "publicLobbies": "Public Lobbies",
+        "noPublicLobbies": "No public lobbies. Create one and toggle it public so others can see it.",
+        "publicLobbyMeta": "Host: {{owner}}",
+        "playerCount": "{{count}} players"
     },
     "decks": {
         "rulesetLoading": "Ruleset is loading...",
@@ -186,12 +191,23 @@
         "forfeitGame": "Forfeit Game",
         "lobbyDeleted": "Lobby was deleted",
         "lobbyNotFound": "Lobby not found",
-        "spectating": "SPECTATING (read-only)"
+        "spectating": "SPECTATING (read-only)",
+        "visibilityPublic": "PUBLIC",
+        "visibilityPrivate": "PRIVATE",
+        "makePublic": "Make Public",
+        "makePrivate": "Make Private",
+        "chatTitle": "Lobby Chat"
+    },
+    "chat": {
+        "empty": "No messages yet",
+        "inputPlaceholder": "Type a message...",
+        "send": "Send"
     },
     "game": {
         "errorGettingData": "Error getting game data",
         "notStarted": "No game has started yet",
-        "gettingData": "Getting game data..."
+        "gettingData": "Getting game data...",
+        "chatTitle": "Game Chat"
     },
     "spectate": {
         "errorGettingData": "Error getting spectate data",

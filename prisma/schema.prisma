@@ -37,6 +37,7 @@ model User {
     ownedLobbies    Lobby[]
     playerships     Playership[]
     gamePlayerships GamePlayer[]
+    chatMessages    ChatMessage[]
 
     friends  User[] @relation("Friendship")
     friendOf User[] @relation("Friendship")
@@ -92,7 +93,14 @@ model Lobby {
     version Int
     options Json
 
+    /// 公开大厅可在 /play 列表中被所有用户看到；私人大厅只能通过 URL 加入。
+    isPublic Boolean @default(false)
+
+    /// 大厅内聊天消息（lobbyId 非空，gameId 为空）。
+    chatMessages ChatMessage[]
+
     @@index([ownerId])
+    @@index([isPublic])
 }
 
 model Playership {
@@ -141,6 +149,32 @@ model Game {
 
     packets GamePacket[]
     players GamePlayer[]
+    /// 对局内聊天消息（gameId 非空，lobbyId 为空）。
+    chatMessages ChatMessage[]
+}
+
+/// 大厅/对局内聊天消息。
+/// - lobbyId 非空 + gameId 为空：大厅聊天
+/// - gameId 非空 + lobbyId 为空：对局聊天
+/// 二者互斥（Zod schema 校验），且均关联到发送者 User。
+model ChatMessage {
+    id        String   @id @default(uuid())
+    createdAt DateTime @default(now())
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    lobbyId String?
+    lobby   Lobby? @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+
+    gameId String?
+    game   Game?  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+    /// 消息正文（1-500 字符，前端 Zod 校验）。
+    content String
+
+    @@index([lobbyId, createdAt])
+    @@index([gameId, createdAt])
 }
 
 model GamePlayer {

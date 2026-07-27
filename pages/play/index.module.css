@@ -33,3 +33,82 @@
     text-align: center;
     color: var(--blood);
 }
+
+/* 公开大厅列表项：左侧名称、右侧玩家数与房主 */
+.publicLobby {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2em;
+    padding: 1em 2em;
+    background: var(--ui);
+    color: var(--flow);
+    border: solid var(--flow);
+    border-width: 1em 1em 2em;
+    cursor: pointer;
+}
+
+.publicLobby:hover {
+    background: var(--ui-dark);
+}
+
+.publicLobbyInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    min-width: 0;
+    flex: 1;
+}
+
+.publicLobbyName {
+    font-size: 9em;
+    word-break: break-word;
+}
+
+.publicLobbyMeta {
+    color: var(--ui-dark);
+    font-size: 7em;
+}
+
+.publicLobbyCount {
+    color: var(--flow);
+    font-size: 8em;
+    flex-shrink: 0;
+}
+
+.createRow {
+    display: flex;
+    gap: 2em;
+    align-items: stretch;
+}
+
+.createRow > * {
+    flex: 1;
+}
+
+.createRow .newLobby {
+    /* 让公开大厅按钮和私有按钮等宽 */
+}
+
+.sectionTitle {
+    font-size: 11em;
+    margin-bottom: 1em;
+    color: var(--flow);
+}
+
+.publicSection {
+    margin-top: 4em;
+}
+
+.publicList {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+}
+
+.publicEmpty {
+    color: var(--ui-dark);
+    font-size: 8em;
+    text-align: center;
+    padding: 2em;
+}

@@ -37,3 +37,28 @@
 .gameEnd {
     width: 200em;
 }
+
+/* 对局内聊天框：固定在右下角，可折叠避免遮挡棋盘 */
+.chatPanel {
+    position: absolute;
+    right: 4em;
+    bottom: 4em;
+    width: 200em;
+    max-height: 60em;
+    transition: max-height 0.2s ease;
+    z-index: 10;
+    overflow: hidden;
+}
+
+.chatPanel:not(.collapsed) {
+    max-height: 250em;
+}
+
+.chatPanel :global(.chatBox) {
+    height: 100%;
+    max-height: 250em;
+}
+
+.chatPanel :global(.messages) {
+    max-height: 180em;
+}

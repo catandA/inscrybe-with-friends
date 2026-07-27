@@ -1,0 +1,157 @@
+.chatBox {
+    display: flex;
+    flex-direction: column;
+    background: var(--ui);
+    color: var(--flow);
+    border: solid var(--flow);
+    border-width: 1em 1em 3em;
+    padding: 2em;
+    gap: 2em;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1em solid var(--flow);
+    padding-bottom: 1em;
+}
+
+.title {
+    font-size: 10em;
+    /* 与 Text size=10 一致 */
+}
+
+.toggleBtn {
+    all: unset;
+    cursor: pointer;
+    color: var(--ui-dark);
+    font-size: 8em;
+    padding: 0.5em 1em;
+    border: 1em solid var(--flow);
+    background: var(--ui-dark);
+}
+
+.toggleBtn:hover {
+    color: var(--flow);
+}
+
+.messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    /* 当 ChatBox 处于可折叠布局时给一个最小高度，避免空状态被压扁 */
+    min-height: 60em;
+    /* 让消息容器自身有滚动条而不是把整个页面撑高 */
+    max-height: 100%;
+}
+
+.message {
+    display: flex;
+    gap: 1em;
+    align-items: flex-start;
+}
+
+.avatar {
+    width: 6em;
+    height: 6em;
+    flex-shrink: 0;
+    border: 0.5em solid var(--flow);
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+    min-width: 0;
+}
+
+.meta {
+    display: flex;
+    gap: 1em;
+    align-items: baseline;
+    color: var(--ui-dark);
+    font-size: 7em;
+}
+
+.name {
+    color: var(--flow);
+    font-weight: bold;
+    font-size: 8em;
+}
+
+.time {
+    color: var(--ui-dark);
+    font-size: 7em;
+}
+
+.content {
+    color: var(--flow);
+    font-size: 9em;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+.empty {
+    color: var(--ui-dark);
+    font-size: 8em;
+    text-align: center;
+    padding: 4em;
+}
+
+.inputRow {
+    display: flex;
+    gap: 1em;
+}
+
+.input {
+    flex: 1;
+    background: var(--ui-dark);
+    color: var(--flow);
+    border: 1em solid var(--flow);
+    padding: 1em 1.5em;
+    font-size: 9em;
+    font-family: inherit;
+    outline: none;
+}
+
+.input::placeholder {
+    color: var(--ui-dark);
+}
+
+.input:focus {
+    border-color: var(--flow);
+}
+
+.sendBtn {
+    background: var(--ui-dark);
+    color: var(--flow);
+    border: 1em solid var(--flow);
+    border-bottom-width: 2em;
+    padding: 0 2em;
+    font-size: 9em;
+    cursor: pointer;
+}
+
+.sendBtn:active {
+    border-bottom-width: 1em;
+    margin-bottom: 1em;
+    transform: translateY(1em);
+}
+
+.sendBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 折叠态：只显示标题栏，messages 和 inputRow 隐藏 */
+.collapsed .messages,
+.collapsed .inputRow {
+    display: none;
+}
+
+.collapsed {
+    border-bottom-width: 1em;
+}

@@ -6,7 +6,8 @@ import { Box } from '@/components/ui/Box';
 import Image from 'next/image';
 import { Select } from '@/components/inputs/Select';
 import { Button } from '@/components/inputs/Button';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import classNames from 'classnames';
 import { subscribeLobby } from '@/lib/socket';
 import { defaultFightOptions, zFightOptions } from '@/lib/online/z';
 import type { FightOptions } from '@/lib/engine/Fight';
@@ -14,6 +15,8 @@ import { FightSide } from '@/lib/engine/Fight';
 import { rulesets, userRulesetKey } from '@/lib/defs/prints';
 import { entries } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { ChatBox } from '@/components/chat/ChatBox';
+import type { ChatMessagePayload } from '@/server/socket';
 
 /**
  * 大厅中 FightOptions 的紧凑只读展示。
@@ -115,6 +118,27 @@ export default function Lobby() {
         changeOptions.mutate({ id: lobbyId, options: { ruleset: id } });
     };
 
+    // 切换大厅公开/私有：仅 owner 可调用。
+    const setVisibility = trpc.lobbies.setVisibility.useMutation({ onSuccess: () => lobby.refetch() });
+    const onToggleVisibility = () => {
+        if (!lobby.data) return;
+        setVisibility.mutate({ id: lobbyId, isPublic: !lobby.data.isPublic });
+    };
+
+    // 大厅聊天：拉取历史 + Socket 订阅新消息 + 发送 mutation
+    const chatHistory = trpc.chat.historyForLobby.useQuery({ lobbyId }, {
+        refetchOnWindowFocus: false,
+    });
+    const [chatMessages, setChatMessages] = useState<ChatMessagePayload[]>([]);
+    // 历史拉取完成后初始化本地消息列表
+    useEffect(() => {
+        if (chatHistory.data) setChatMessages(chatHistory.data);
+    }, [chatHistory.data]);
+    const sendChat = trpc.chat.sendToLobby.useMutation();
+    const onSendChat = async (content: string) => {
+        await sendChat.mutateAsync({ lobbyId, content });
+    };
+
     const canStartGame = !pending && player && opposing && player !== opposing
         && lobby.data?.decks && lobby.data.decks[`${player.userId}`] && lobby.data.decks[`${opposing.userId}`];
 
@@ -125,6 +149,9 @@ export default function Lobby() {
             },
             onGameStart: () => {
                 onEnterGame();
+            },
+            onChat: (message) => {
+                setChatMessages(prev => [...prev, message]);
             },
         });
         return unsubscribe;
@@ -189,6 +216,22 @@ export default function Lobby() {
                     onSelect={onSelectRuleset}
                 /> : <Text>{rulesets[currentRuleset]?.name ?? currentRuleset}</Text>}
                 <LobbyOptions opts={lobbyOptions} t={t} />
+                {/* 公开/私有状态显示 + owner 切换按钮 */}
+                <div className={styles.visibilityRow}>
+                    <span className={classNames(styles.visibilityBadge, {
+                        [styles.public]: lobby.data.isPublic,
+                    })}>
+                        {lobby.data.isPublic ? t('lobby.visibilityPublic') : t('lobby.visibilityPrivate')}
+                    </span>
+                    {isOwner && !hasGame && (
+                        <Button
+                            disabled={setVisibility.isPending}
+                            onClick={onToggleVisibility}
+                        >
+                            <Text>{lobby.data.isPublic ? t('lobby.makePrivate') : t('lobby.makePublic')}</Text>
+                        </Button>
+                    )}
+                </div>
                 {isOwner && <>
                     <Button
                         disabled={deleteLobby.isPending}
@@ -288,6 +331,12 @@ export default function Lobby() {
                 )}
             </Box>
         </div>}
+        {lobby.data && <ChatBox
+            className={styles.chatPanel}
+            title={t('lobby.chatTitle')}
+            messages={chatMessages}
+            onSend={onSendChat}
+        />}
         {lobby.isFetched && !lobby.data && <Box>
             <Text size={12}>{lobbyExistedRef.current ? t('lobby.lobbyDeleted') : t('lobby.lobbyNotFound')}</Text>
         </Box>}
