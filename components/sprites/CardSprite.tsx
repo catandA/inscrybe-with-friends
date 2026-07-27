@@ -57,7 +57,7 @@ export const CardSprite = memo(function CardSprite({
 
     let circuitSlot: CircuitSlot = null;
     if (fieldPos && client) {
-        const { prints } = rulesets[client.fight.opts.ruleset];
+        const prints = rulesets[client.fight.opts.ruleset]?.prints ?? {};
         const calcPower = getCardPower(prints, client.fight, fieldPos);
         if (calcPower != null) power = calcPower;
 
