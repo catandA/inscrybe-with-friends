@@ -78,7 +78,9 @@
     gap: 0.3em;
     align-items: baseline;
     color: var(--ui-dark);
-    font-size: 7em;
+    /* 不设 font-size：避免内层 .name/.time 的 em 相对 .meta 字号二次放大。
+     * .name/.time 各自的 font-size 直接相对根字号 3px。
+     */
 }
 
 .name {
@@ -114,6 +116,11 @@
 
 .input {
     flex: 1;
+    /* 关键：input 默认 min-width: auto 取 intrinsic 宽度（约 200px），
+     * 在窄容器中 flex:1 失效会撑爆 .chatBox 边界导致横向溢出。
+     * 必须 min-width: 0 让 flex 正确收缩。参考 .body 同样处理。
+     */
+    min-width: 0;
     background: var(--ui-dark);
     color: var(--flow);
     font-size: 9em;
