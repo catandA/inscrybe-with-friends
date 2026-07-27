@@ -24,30 +24,26 @@
     width: 200em;
 }
 
-/* 对局内聊天框：固定在右下角，可折叠避免遮挡棋盘 */
+/* 对局内聊天框：固定在右下角，可折叠避免遮挡棋盘。
+ * collapsed class 在内部 .chatBox 上（由 ChatBox 组件控制），
+ * 折叠时 .messages/.inputRow display:none，chatBox 自然收缩到仅 header 高度。
+ * chatPanel 不需要限制 max-height，让 chatBox 自身高度决定。
+ */
 .chatPanel {
     position: absolute;
     right: 4em;
     bottom: 4em;
     width: 200em;
-    /* 折叠时只有标题栏高度 */
-    max-height: 60em;
-    transition: max-height 0.2s ease;
+    max-height: 250em;
     z-index: 10;
-    /* 让 ChatBox 内部 .messages 滚动而非整个面板撑高 */
     overflow: hidden;
 }
 
-.chatPanel:not(.collapsed) {
-    max-height: 250em;
-}
-
 .chatPanel :global(.chatBox) {
-    height: 100%;
     max-height: 250em;
-    /* 内部 messages 容器限高让滚动生效 */
 }
 
 .chatPanel :global(.messages) {
+    /* 让消息容器自身滚动，而非撑高整个面板 */
     max-height: 180em;
 }

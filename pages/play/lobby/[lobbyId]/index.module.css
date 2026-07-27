@@ -90,8 +90,9 @@
 
 .visibilityBadge {
     font-size: 8em;
-    padding: 0.5em 1.5em;
-    border: 1em solid var(--flow);
+    /* padding/border 用小值，避免被 font-size 放大 */
+    padding: 0.1em 0.3em;
+    border: 0.15em solid var(--flow);
     background: var(--ui-dark);
     color: var(--flow);
 }
@@ -101,9 +102,14 @@
     color: var(--ui-dark);
 }
 
-/* 大厅内聊天框：放在 panels 下方独立区域 */
+/* 大厅内聊天框：放在 panels 下方独立区域。
+ * 不固定整体高度，让 chatBox 按内容撑开；
+ * 通过限制 .messages max-height 让消息列表内部滚动。
+ */
 .chatPanel {
     margin-top: 4em;
-    height: 200em;
-    /* 给 ChatBox 一个固定高度让它内部滚动 */
+}
+
+.chatPanel :global(.messages) {
+    max-height: 200em;
 }

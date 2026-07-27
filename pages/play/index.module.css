@@ -92,7 +92,8 @@
 
 .sectionTitle {
     font-size: 11em;
-    margin-bottom: 1em;
+    /* margin-bottom 用小值：1em × 11em font × 3px = 33px 过大；0.3em = 10px */
+    margin-bottom: 0.3em;
     color: var(--flow);
 }
 
@@ -110,5 +111,6 @@
     color: var(--ui-dark);
     font-size: 8em;
     text-align: center;
-    padding: 2em;
+    /* padding 小值：0.5em × 8em font × 3px = 12px */
+    padding: 0.5em;
 }

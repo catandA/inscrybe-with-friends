@@ -1,3 +1,8 @@
+/* em 单位规则：padding/border 的 em 相对元素自身 font-size，不是父级。
+ * 所以带 font-size: Nem 的元素上设 padding: Mem，实际 padding = M × N × 根字号(3px)。
+ * 解决：要么不设 font-size 让 em 相对根字号（参考 Button.module.css），
+ * 要么把 padding/border 改成很小的 em 值（参考 Select.module.css .value）。
+ */
 .chatBox {
     display: flex;
     flex-direction: column;
@@ -15,11 +20,12 @@
     align-items: center;
     border-bottom: 1em solid var(--flow);
     padding-bottom: 1em;
+    /* 不设 font-size，padding/border 相对根字号 */
 }
 
 .title {
     font-size: 10em;
-    /* 与 Text size=10 一致 */
+    /* 仅 font-size，无其他 em 属性，OK */
 }
 
 .toggleBtn {
@@ -27,8 +33,9 @@
     cursor: pointer;
     color: var(--ui-dark);
     font-size: 8em;
-    padding: 0.5em 1em;
-    border: 1em solid var(--flow);
+    /* padding/border 用很小的 em 值，避免被 font-size 放大太多 */
+    padding: 0.1em 0.3em;
+    border: 0.15em solid var(--flow);
     background: var(--ui-dark);
 }
 
@@ -42,9 +49,7 @@
     display: flex;
     flex-direction: column;
     gap: 1em;
-    /* 当 ChatBox 处于可折叠布局时给一个最小高度，避免空状态被压扁 */
     min-height: 60em;
-    /* 让消息容器自身有滚动条而不是把整个页面撑高 */
     max-height: 100%;
 }
 
@@ -70,7 +75,7 @@
 
 .meta {
     display: flex;
-    gap: 1em;
+    gap: 0.3em;
     align-items: baseline;
     color: var(--ui-dark);
     font-size: 7em;
@@ -98,7 +103,8 @@
     color: var(--ui-dark);
     font-size: 8em;
     text-align: center;
-    padding: 4em;
+    /* padding 用小值：0.5em × 8em font × 3px = 12px */
+    padding: 0.5em;
 }
 
 .inputRow {
@@ -110,9 +116,10 @@
     flex: 1;
     background: var(--ui-dark);
     color: var(--flow);
-    border: 1em solid var(--flow);
-    padding: 1em 1.5em;
     font-size: 9em;
+    /* padding/border 小值，避免被 font-size 放大 */
+    border: 0.15em solid var(--flow);
+    padding: 0 0.3em;
     font-family: inherit;
     outline: none;
 }
@@ -128,17 +135,18 @@
 .sendBtn {
     background: var(--ui-dark);
     color: var(--flow);
-    border: 1em solid var(--flow);
-    border-bottom-width: 2em;
-    padding: 0 2em;
     font-size: 9em;
+    border: solid var(--flow);
+    border-width: 0.15em 0.15em 0.3em;
+    padding: 0 0.5em;
     cursor: pointer;
 }
 
 .sendBtn:active {
-    border-bottom-width: 1em;
-    margin-bottom: 1em;
-    transform: translateY(1em);
+    /* 1em 在 9em font 下 = 27px，过大；改用 0.15em = 4px */
+    border-bottom-width: 0.15em;
+    margin-bottom: 0.15em;
+    transform: translateY(0.15em);
 }
 
 .sendBtn:disabled {
