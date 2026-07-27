@@ -1,7 +1,7 @@
 import { Server as IOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { FightPacket } from '@/lib/engine/Tick';
-import { auth } from './auth';
+import { getToken } from 'next-auth/jwt';
 import { prisma } from './db';
 
 let io: IOServer | null = null;
@@ -10,7 +10,7 @@ let io: IOServer | null = null;
  * 初始化 Socket.IO 服务，挂载到 Next.js HTTP server。
  *
  * 替换原 Pusher 方案：国内用户走 WebSocket 直连，无 Pusher 云中转。
- * 鉴权用 NextAuth `auth()` 从 cookie 解析 session，用户身份由 session.user.id 标识，
+ * 鉴权用 next-auth/jwt 的 getToken 从 cookie 解 JWT，用户身份由 token.sub 标识，
  * 不再需要像 Pusher 那样的 socket_id/channel_name 签名流程。
  *
  * 房间映射（对应原 Pusher 频道）：
@@ -24,16 +24,23 @@ export async function setupSocketIO(httpServer: HTTPServer) {
         cors: { origin: true, credentials: true },
     });
 
-    // 鉴权中间件：从 cookie 解析 NextAuth session
+    // 鉴权中间件：用 next-auth/jwt 的 getToken 从 cookie 解 JWT。
+    // 不能用 auth(req, res)：NextAuth v5 的 auth() 期望 Web API Request/Response，
+    // Socket.IO 的 socket.request 是 Node.js IncomingMessage，传进去会抛
+    // "response.appendHeader is not a function"。
+    // getToken 原生支持 IncomingMessage，直接读 cookie 解 JWT，不依赖 Response 对象。
     io.use(async (socket: Socket, next) => {
         try {
-            const session = await auth(socket.request as any, {} as any);
-            if (!session?.user?.id) {
+            const token = await getToken({
+                req: socket.request as any,
+                secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+            });
+            if (!token?.sub) {
                 return next(new Error('UNAUTHORIZED'));
             }
-            socket.data.userId = session.user.id;
-            socket.data.name = session.user.name;
-            socket.data.image = session.user.image;
+            socket.data.userId = token.sub;
+            socket.data.name = token.name;
+            socket.data.image = token.picture;
             next();
         } catch (err) {
             next(err as Error);
