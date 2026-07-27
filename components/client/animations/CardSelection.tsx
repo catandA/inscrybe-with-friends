@@ -27,7 +27,7 @@ export const CardSelection = memo(function CardSelection({
     prompt,
     padding = 0,
 }: CardSelectionProps) {
-    const prints = useFight(fight => rulesets[fight.opts.ruleset].prints);
+    const prints = useFight(fight => rulesets[fight.opts.ruleset]?.prints ?? {});
 
     const { ref: cardsRef, width } = useElementSize<HTMLDivElement>();
 

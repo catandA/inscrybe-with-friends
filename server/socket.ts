@@ -4,6 +4,13 @@ import { FightPacket } from '@/lib/engine/Tick';
 import { getToken } from 'next-auth/jwt';
 import { prisma } from './db';
 
+// io 实例通过 globalThis 共享，不能只用模块级变量。
+// 原因：自定义 server 模式下，server.ts 由 tsx 运行原始 .ts，API routes 由
+// webpack 打包成 bundle，两边 import 的 server/socket.ts 是不同模块实例，
+// 各有独立的 let io 变量。setupSocketIO 设置的是 tsx 实例的 io，API route
+// bundle 里 getIO() 读的是 webpack 实例的 io，永远是 null，导致所有
+// trigger* 调用静默跳过。globalThis 在主进程内共享，可绕过模块实例隔离。
+type GlobalWithIo = typeof globalThis & { __socketIO?: IOServer | null };
 let io: IOServer | null = null;
 
 /**
@@ -23,6 +30,7 @@ export async function setupSocketIO(httpServer: HTTPServer) {
         path: '/api/socket.io',
         cors: { origin: true, credentials: true },
     });
+    (globalThis as GlobalWithIo).__socketIO = io;
 
     // 鉴权中间件：用 next-auth/jwt 的 getToken 从 cookie 解 JWT。
     // 不能用 auth(req, res)：NextAuth v5 的 auth() 期望 Web API Request/Response，
@@ -77,10 +85,11 @@ export async function setupSocketIO(httpServer: HTTPServer) {
 }
 
 export function getIO(): IOServer | null {
-    // Next.js dev 模式：API routes 跑在 render worker 子进程，主进程 server.ts
-    // 调的 setupSocketIO 只设了主进程的 io 变量，worker 进程的 io 永远是 null。
-    // 不再抛错——trigger 函数会检查返回值并容错跳过。prod 模式无 worker 隔离问题。
-    return io;
+    // 优先读模块级变量（同实例），否则从 globalThis 读（跨模块实例共享）。
+    // 自定义 server 模式下 server.ts 与 API route bundle 是不同模块实例，
+    // 但都在主进程内执行，globalThis 共享。
+    if (io) return io;
+    return (globalThis as GlobalWithIo).__socketIO ?? null;
 }
 
 // === Trigger functions（与原 server/pusher.ts 同名同签名，平滑替换调用方） ===

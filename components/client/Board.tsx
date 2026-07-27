@@ -23,7 +23,7 @@ import { useEm } from '@/hooks/dom/useEm';
 
 export const Board = memo(function Board({ readonly }: { readonly?: boolean } = {}) {
     const battleTheme = useBattleSheet();
-    const prints = useFight(fight => rulesets[fight.opts.ruleset].prints);
+    const prints = useFight(fight => rulesets[fight.opts.ruleset]?.prints ?? {});
     const field = useFight(fight => fight.field);
     const hand = useFight(fight => fight.hands.player);
     const isPlayTurn = useFight(fight => fight.turn.side === 'player' && fight.turn.phase === 'play');

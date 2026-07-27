@@ -13,7 +13,7 @@ export const Status = memo(function Status({ side }: { side: FightSide }) {
     const battleTheme = useBattleSheet();
     const player = useFight(fight => fight.players[side]);
     const lanes = useFight(fight => fight.field[side]);
-    const prints = useFight(fight => rulesets[fight.opts.ruleset].prints);
+    const prints = useFight(fight => rulesets[fight.opts.ruleset]?.prints ?? {});
 
     const maxEnergy = 6;
     const [energy, totalEnergy] = player.energy;

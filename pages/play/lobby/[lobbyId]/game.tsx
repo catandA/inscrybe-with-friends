@@ -12,6 +12,9 @@ import { Client } from '@/components/client/Client';
 import { Button } from '@/components/inputs/Button';
 import { Box } from '@/components/ui/Box';
 import { useTranslation } from 'react-i18next';
+import { useResolvedRuleset } from '@/hooks/useResolvedRuleset';
+import { defaultFightOptions, zFightOptions } from '@/lib/online/z';
+import { useMemo } from 'react';
 
 export default function Game() {
     const { t } = useTranslation();
@@ -25,6 +28,14 @@ export default function Game() {
     });
 
     const gameId = lobby.data?.gameId ?? null;
+
+    // 解析 lobby 的 ruleset 并注册到运行时 rulesets map。
+    // 与 lobby/index.tsx 同理：用户自定义 ruleset 需要从 DB 拉取并 registerRuleset，
+    // 否则 Board/Status/CardSelection 等组件访问 rulesets[fight.opts.ruleset].prints 会 undefined。
+    const lobbyOptions = useMemo(() => (
+        Object.assign(defaultFightOptions(), zFightOptions.partial().parse(lobby.data?.options ?? {}))
+    ), [lobby.data?.options]);
+    useResolvedRuleset(lobbyOptions.ruleset);
 
     const game = trpc.game.get.useQuery({ gameId: gameId!, includeInitPacket: true }, {
         refetchOnMount: true,
