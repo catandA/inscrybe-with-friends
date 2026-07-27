@@ -91,8 +91,9 @@
 }
 
 .sectionTitle {
-    font-size: 11em;
-    /* margin-bottom 用小值：1em × 11em font × 3px = 33px 过大；0.3em = 10px */
+    /* Text 组件会用 inline style 设 font-size: 12em，这里不重复设避免冗余。
+     * margin-bottom 相对 inline 的 12em = 0.3 × 12 × 3 = 10.8px。
+     */
     margin-bottom: 0.3em;
     color: var(--flow);
 }
@@ -108,9 +109,13 @@
 }
 
 .publicEmpty {
+    /* 这是容器 div，里面包了 <Text size={8}>。
+     * 容器不能设 font-size: Nem，否则 Text 的 em 会相对 N×根字号 二次放大
+     * （8em 容器 × 8em Text = 64 倍根字号 = 192px）。
+     * 让 Text 自己控制字号，这里只管布局/颜色。
+     * padding 相对根字号 3px：4em = 12px。
+     */
     color: var(--ui-dark);
-    font-size: 8em;
     text-align: center;
-    /* padding 小值：0.5em × 8em font × 3px = 12px */
-    padding: 0.5em;
+    padding: 4em;
 }
