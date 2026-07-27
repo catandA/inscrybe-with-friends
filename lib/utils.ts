@@ -75,6 +75,33 @@ export function shuffle<T>(list: T[], seed?: string) {
 
 export const isClient = typeof window === 'object';
 
+/**
+ * 生成 RFC 4122 v4 UUID。
+ *
+ * `crypto.randomUUID()` 是 Web Crypto API，只在 secure context（HTTPS 或 localhost）
+ * 下可用。生产 build 通过 HTTP + 公网 IP 访问时该函数不存在，调用会抛
+ * `TypeError: crypto.randomUUID is not a function`。
+ * 这里优先用 randomUUID，缺失时降级到 `crypto.getRandomValues` 手写 v4，
+ * 最终降级到 Math.random（极不可能走到，仅作保底）。
+ */
+export function uuid(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+        bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
+        const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 export function getBaseUrl() {
     if (isClient)
         return '';

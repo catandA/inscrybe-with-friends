@@ -2,6 +2,7 @@ import { usePresence, useAnimate, AnimationPlaybackControls } from 'motion/react
 import { animationDurations, useClientProp, useFightGetter } from '@/hooks/useClientStore';
 import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { positions } from '@/lib/engine/utils';
+import { uuid } from '@/lib/utils';
 import { FieldPos } from '@/lib/engine/Card';
 
 const getParents = (el: HTMLElement, selector?: string) => {
@@ -109,7 +110,7 @@ export function PlayedCard({ children, opposing, lane }: PlayedCardProps) {
     }, [isPresent, animation, safeToRemove, animate, scope, lane, opposing, getFight]);
 
     const key = useMemo(() => {
-        return crypto.randomUUID();
+        return uuid();
     }, [animation]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return <div key={key} ref={scope}>{children}</div>;

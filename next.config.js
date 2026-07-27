@@ -2,7 +2,8 @@
 const nextConfig = {
     images: {
         // Discord 头像 CDN + GitHub 头像 CDN（多 provider 登录后两者都会出现）
-        domains: ['cdn.discordapp.com', 'avatars.githubusercontent.com'],
+        // ui-avatars.com：邮箱密码注册用户的占位头像（server/trpc/users.ts 生成）
+        domains: ['cdn.discordapp.com', 'avatars.githubusercontent.com', 'ui-avatars.com'],
     },
     reactStrictMode: true,
 

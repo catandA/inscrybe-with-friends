@@ -5,7 +5,7 @@ import { FightPacket } from '@/lib/engine/Tick';
 import { Event, eventSettlers } from '@/lib/engine/Events';
 import { useGameStore } from './useGameStore';
 import { Action, ActionRes, PlayerMessage } from '@/lib/engine/Actions';
-import { clone } from '@/lib/utils';
+import { clone, uuid } from '@/lib/utils';
 import { ErrorType, FightError } from '@/lib/engine/Errors';
 import { triggerActionSound, triggerEventSound } from './useAudio';
 import { devtools } from 'zustand/middleware';
@@ -53,7 +53,7 @@ export const useClientStore = create(devtools<FightStore>((set, get) => ({
                 ...state.clients,
                 [id]: {
                     id,
-                    nonce: crypto.randomUUID(),
+                    nonce: uuid(),
                     fight,
                     pending: false,
                     settled: [],

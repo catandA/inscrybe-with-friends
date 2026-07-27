@@ -7,5 +7,8 @@
     "ext": "ts,tsx,cjs,json",
     "exec": "tsx --require ./preload.cjs server.ts",
     "legacy-watch": true,
-    "verbose": false
+    "verbose": false,
+    "env": {
+        "NODE_ENV": "development"
+    }
 }
