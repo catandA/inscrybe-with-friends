@@ -1,5 +1,3 @@
-import superagent from 'superagent';
-
 export type LogContext = Partial<{
     gameId: string;
     lobbyId: string;
@@ -12,10 +10,19 @@ export type LogEvent = {
     level?: 'info' | 'warn' | 'error' | 'debug' | 'verbose';
 } & LogContext;
 
+const levelToConsole = {
+    info: console.info,
+    warn: console.warn,
+    error: console.error,
+    debug: console.debug,
+    verbose: console.debug,
+} as const;
+
+const formatCtx = (ctx?: LogContext) => ctx && Object.keys(ctx).length > 0 ? ' ' + JSON.stringify(ctx) : '';
+
 export const logger = {
-    events: [] as LogEvent[],
-    log: (message: string, { ctx, level }: { ctx?: LogContext, level?: LogEvent['level'] }) => {
-        logger.events.push({ message, level, ...ctx });
+    log: (message: string, { ctx, level = 'info' }: { ctx?: LogContext, level?: LogEvent['level'] }) => {
+        levelToConsole[level](`[${level}] ${message}${formatCtx(ctx)}`);
     },
     info: (message: string, ctx?: LogContext) => logger.log(message, { ctx, level: 'info' }),
     warn: (message: string, ctx?: LogContext) => logger.log(message, { ctx, level: 'warn' }),
@@ -24,10 +31,6 @@ export const logger = {
     verbose: (message: string, ctx?: LogContext) => logger.log(message, { ctx, level: 'verbose' }),
 
     flush: async () => {
-        try {
-            await superagent.post('https://in.logs.betterstack.com')
-                .set('Authorization', 'Bearer ' + process.env.LOGTAIL_TOKEN)
-                .send(logger.events);
-        } catch {}
+        // 本地 console 日志即时输出，无需 flush
     },
 };
