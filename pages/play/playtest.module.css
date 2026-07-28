@@ -4,7 +4,8 @@
 }
 
 .gameRoot {
-    width: 500em;
+    width: 100%;
+    max-width: 500em;
     display: flex;
     flex-direction: column;
     margin: 0 auto;

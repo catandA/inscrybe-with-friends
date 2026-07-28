@@ -2,11 +2,19 @@
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: 26em calc(100vh - 26em);
+    grid-template-rows: 26em calc(100dvh - 26em);
     grid-template-areas: "nav" "main";
     height: 100vh;
+    height: 100dvh;
 
     filter: url(#abberation) url(#bloom);
-    font-size: 0.1875em;
+    /* 响应式魔法 em：整个 UI 用 em 单位，根字号缩放则所有卡牌/棋盘/面板等比缩放。
+     * 基准内容尺寸约 200em(宽) × 246em(高)（nav 26 + board 边框 160 + hand 60）。
+     * 取视口宽高双约束的较小者，保证内容完整可见不溢出；
+     * 上限 3px（桌面端 1100px+ 视口体验不变），下限 1.2px（极端窄屏兜底）。
+     * 示例：手机横屏 667×375 → 1.52px；手机竖屏 375×667 → 1.88px；桌面 1366×768 → 3px。
+     */
+    font-size: clamp(1.2px, min(calc(100vw / 200), calc(100dvh / 246)), 3px);
 }
 
 .main {
