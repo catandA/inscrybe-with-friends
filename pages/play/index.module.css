@@ -4,7 +4,8 @@
 
 .playMenu .lobbies {
     background: var(--ui);
-    width: 120em;
+    width: 100%;
+    max-width: 120em;
 }
 
 .lobby {

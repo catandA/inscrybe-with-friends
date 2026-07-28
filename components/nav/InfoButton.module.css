@@ -40,6 +40,7 @@
 
 .modal {
     width: 480em;
+    max-width: calc(100% - 32em);
     max-height: 80vh;
     overflow-y: auto;
     color: var(--flow);

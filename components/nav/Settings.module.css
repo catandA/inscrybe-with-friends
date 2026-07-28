@@ -12,6 +12,7 @@
 .backdrop .modal {
     margin: 16em auto;
     width: 480em;
+    max-width: calc(100% - 32em);
     color: var(--flow);
 }
 

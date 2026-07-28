@@ -148,3 +148,25 @@
     overflow: auto;
     padding: 4em;
 }
+
+/* 窄屏切换单列布局：prints 区从右侧 194em 固定列变为下方自适应区。
+ * 断点 1100px 对应 --max-width（桌面端 3px 字号下约 366em）。 */
+@media (max-width: 1100px) {
+    .editor {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto minmax(80em, 1fr) auto;
+        grid-template-areas: "controls" "deck" "prints" "side";
+    }
+    .editor.infoOpen {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto minmax(80em, 1fr) auto;
+        grid-template-areas: "info" "controls" "deck" "prints" "side";
+    }
+    .deck {
+        margin: 4em 4em;
+        min-height: 60em;
+    }
+    .prints {
+        min-height: 80em;
+    }
+}

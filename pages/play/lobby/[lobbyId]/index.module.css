@@ -18,6 +18,8 @@
     align-items: flex-start;
     justify-content: center;
     gap: 4em;
+    /* 窄屏时两个面板上下排列，不并排溢出 */
+    flex-wrap: wrap;
     /* 允许子 Box 内 Select 下拉项溢出叠加在右侧 Box 之上，不被截断 */
     overflow: visible;
 }
@@ -44,7 +46,8 @@
 }
 
 .panels .playerPanel {
-    width: 200em;
+    width: 100%;
+    max-width: 200em;
 }
 
 /* 大厅 FightOptions 紧凑只读展示（替代原 YAML dump） */
